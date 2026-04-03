@@ -36,7 +36,7 @@ struct ContactsView: View {
                 UndoToastView(
                     itemCount: viewModel.lastMergedCount,
                     countdownDuration: 30,
-                    onUndo: { viewModel.undoMerge() },
+                    onUndo: { viewModel.undoMerge(dataManager: dataManager) },
                     onDismiss: { viewModel.showUndoToast = false }
                 )
                 .padding(.bottom, PCTheme.Spacing.xxl)
@@ -47,7 +47,7 @@ struct ContactsView: View {
         .sheet(item: $selectedGroup) { group in
             MergeComparisonView(
                 group: group,
-                onMerge: { viewModel.mergeGroup(group) },
+                onMerge: { viewModel.mergeGroup(group, dataManager: dataManager) },
                 onCancel: { selectedGroup = nil }
             )
         }
@@ -92,7 +92,7 @@ struct ContactsView: View {
                             showPaywall = true
                             return
                         }
-                        viewModel.mergeAll()
+                        viewModel.mergeAll(dataManager: dataManager)
                     }
                     .secondaryStyle()
                     .accessibilityHint("Automatically merge all duplicate contacts")
@@ -183,7 +183,7 @@ struct ContactsView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button("Scan Contacts") {
-                    viewModel.startScan()
+                    viewModel.startScan(dataManager: dataManager)
                 }
                 .primaryCTAStyle()
             }

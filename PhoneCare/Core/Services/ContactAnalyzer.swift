@@ -184,6 +184,38 @@ final class ContactAnalyzer {
         logger.info("Merged \(removeIdentifiers.count) contacts into \(keepIdentifier)")
     }
 
+    // MARK: - Restore Merged Contacts
+
+    func restoreMergedContacts(
+        mergedInto primaryID: String,
+        mergedAfter mergeDate: Date,
+        dataManager: DataManager
+    ) async throws {
+        let backups = try dataManager.fetch(
+            ContactBackup.self,
+            predicate: #Predicate<ContactBackup> {
+                $0.mergedContactID == primaryID && $0.mergeDate >= mergeDate && $0.isRestored == false
+            }
+        )
+
+        guard !backups.isEmpty else { return }
+
+        let store = CNContactStore()
+        let saveRequest = CNSaveRequest()
+
+        for backup in backups {
+            let contacts = try CNContactVCardSerialization.contacts(with: backup.originalContactData)
+            guard let contact = contacts.first else { continue }
+            let mutable = contact.mutableCopy() as! CNMutableContact
+            saveRequest.add(mutable, toContainerWithIdentifier: nil)
+            backup.isRestored = true
+        }
+
+        try store.execute(saveRequest)
+        try dataManager.saveContext()
+        logger.info("Restored \(backups.count) merged contacts for \(primaryID)")
+    }
+
     // MARK: - Backup
 
     private func backupContact(
