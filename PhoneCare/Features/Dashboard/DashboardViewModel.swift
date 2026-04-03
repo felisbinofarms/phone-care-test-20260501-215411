@@ -64,8 +64,13 @@ final class DashboardViewModel {
                     duplicateContacts: scan.duplicateContactCount,
                     batteryHealth: scan.batteryHealth,
                     batteryLevel: scan.batteryLevel,
-                    totalPermissions: PermissionType.allCases.count,
-                    appropriatelySetPermissions: permissionManager.authorizedCount
+                    totalPermissions: PermissionType.allCases.filter {
+                        !PermissionType.unscorable.contains($0)
+                    }.count,
+                    appropriatelySetPermissions: PermissionType.allCases.filter {
+                        !PermissionType.unscorable.contains($0) &&
+                        permissionManager.status(for: $0) != .notDetermined
+                    }.count
                 )
 
                 let result = HealthScoreCalculator.calculate(from: input)

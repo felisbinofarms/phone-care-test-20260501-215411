@@ -86,7 +86,8 @@ final class PrivacyAuditor {
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PhoneCare", category: "PrivacyAuditor")
 
-    /// The permission types we audit
+    /// The permission types we audit.
+    /// Excludes unscorable permissions (e.g. localNetwork) — see PermissionType.unscorable.
     private let auditedPermissions: [PermissionType] = [
         .camera,
         .microphone,

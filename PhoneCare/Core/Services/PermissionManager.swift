@@ -26,6 +26,11 @@ enum PermissionType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Permissions that iOS does not expose a public API to query.
+    /// These are excluded from privacy score calculations but still shown in the UI
+    /// as informational entries with a "Review in Settings" prompt.
+    static let unscorable: Set<PermissionType> = [.localNetwork]
+
     var displayName: String {
         switch self {
         case .camera:       return "Camera"
@@ -162,8 +167,9 @@ final class PermissionManager {
         case .bluetooth:
             return PermissionDelegateHelper.mapCBStatus(CBCentralManager.authorization)
         case .localNetwork:
-            // Local network permission has no system API to read; return notDetermined as a placeholder.
-            return statuses[.localNetwork] ?? .notDetermined
+            // iOS does not expose a public API to query local network permission status.
+            // Always returns .notDetermined — excluded from scoring via PermissionType.unscorable.
+            return .notDetermined
         case .health:
             guard HKHealthStore.isHealthDataAvailable() else { return .restricted }
             // HealthKit doesn't expose a global auth status; treat as notDetermined until specifically checked.
@@ -208,9 +214,9 @@ final class PermissionManager {
             status = await requestBluetoothPermission()
 
         case .localNetwork:
-            // Trigger local network prompt by creating a brief connection.
-            // There is no official API; just mark as authorized optimistically.
-            status = .authorized
+            // iOS has no API to request or query local network permission.
+            // PhoneCare doesn't use local network — show as informational only.
+            status = .notDetermined
 
         case .health:
             status = await requestHealthPermission()
