@@ -3,6 +3,7 @@ import Foundation
 @testable import PhoneCare
 
 @Suite("ContactAnalyzer")
+@MainActor
 struct ContactAnalyzerTests {
 
     // MARK: - Phone Number Normalization
