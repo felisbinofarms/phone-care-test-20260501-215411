@@ -53,6 +53,8 @@ final class PrivacyViewModel {
         // Exclude unscorable permissions (e.g. localNetwork) — iOS has no API to query them.
         let scorable = permissions.filter { !PermissionType.unscorable.contains($0.type) }
         guard !scorable.isEmpty else { return 100 }
+        // "Reviewed" = user made an intentional choice (any status except notDetermined).
+        // Matches PermissionSummary.isAppropriate in PrivacyAuditor — the canonical scoring policy.
         let reviewed = scorable.filter { $0.status != .notDetermined }.count
         let ratio = Double(reviewed) / Double(scorable.count) * 100
         return max(0, min(100, Int(ratio.rounded())))
@@ -101,11 +103,11 @@ final class PrivacyViewModel {
 
     var scoreSummary: String {
         if privacyScore >= 76 {
-            return "Your privacy settings look great."
+            return "Your privacy settings look great. Most permissions have been reviewed."
         } else if privacyScore >= 51 {
-            return "Your privacy is in good shape. A few settings could be reviewed."
+            return "Your privacy is in good shape. A few permissions haven't been reviewed yet."
         } else {
-            return "Some of your privacy settings could be tightened up."
+            return "Several permissions haven't been reviewed yet. Tap any to learn more."
         }
     }
 

@@ -13,16 +13,17 @@ struct PermissionSummary: Sendable, Identifiable {
     let description: String
     let settingsURL: URL?
 
+    /// Canonical scoring policy for privacy permissions.
+    /// "Appropriate" = user made an intentional choice (granted, denied, limited, or restricted).
+    /// Only `notDetermined` is inappropriate — it means the permission hasn't been reviewed.
+    /// This definition is shared by PrivacyViewModel.computeScore() and DashboardViewModel.
     var isAppropriate: Bool {
         switch status {
         case .authorized, .limited:
-            // Having access is appropriate (user intentionally granted)
             return true
         case .denied, .restricted:
-            // Denied is appropriate (user made a conscious choice)
             return true
         case .notDetermined:
-            // Not yet decided -- neutral, but counts as not-yet-reviewed
             return false
         }
     }
