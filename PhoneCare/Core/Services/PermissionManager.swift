@@ -273,7 +273,11 @@ final class PermissionManager {
     private func requestEventKitPermission(for entityType: EKEntityType) async -> PermissionStatus {
         let store = EKEventStore()
         do {
-            let granted = try await store.requestFullAccessToEvents()
+            let granted = switch entityType {
+            case .event: try await store.requestFullAccessToEvents()
+            case .reminder: try await store.requestFullAccessToReminders()
+            @unknown default: try await store.requestFullAccessToEvents()
+            }
             return granted ? .authorized : .denied
         } catch {
             logger.error("EventKit permission error: \(error.localizedDescription)")
