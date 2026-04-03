@@ -8,6 +8,7 @@ struct ProductCardView: View {
     let trialLabel: String?
     let periodLabel: String
     var onSelect: (() -> Void)?
+    var weeklyEquivalentLabel: String?
 
     var body: some View {
         Button {
@@ -31,6 +32,13 @@ struct ProductCardView: View {
                 // Period
                 Text("per \(periodLabel)")
                     .typography(.footnote, color: .pcTextSecondary)
+
+                // Weekly equivalent (annual plans only)
+                if let weekly = weeklyEquivalentLabel {
+                    Text(weekly)
+                        .typography(.caption, color: .pcTextSecondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.md)

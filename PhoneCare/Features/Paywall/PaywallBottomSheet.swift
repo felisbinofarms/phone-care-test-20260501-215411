@@ -6,6 +6,7 @@ struct PaywallBottomSheet: View {
     @State private var viewModel = PaywallViewModel()
 
     var contextualBenefit: String?
+    @State private var showComparePlans = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +27,12 @@ struct PaywallBottomSheet: View {
 
                     // Product cards
                     productsSection
+
+                    // Competitor comparison
+                    competitorComparisonSection
+
+                    // Compare plans (expandable)
+                    comparePlansSection
 
                     // Error
                     if let error = viewModel.purchaseError {
@@ -122,8 +129,83 @@ struct PaywallBottomSheet: View {
                     savingsLabel: viewModel.savingsLabel(for: product),
                     trialLabel: viewModel.trialLabel(for: product),
                     periodLabel: subscriptionManager.periodLabel(for: product),
+                    weeklyEquivalentLabel: viewModel.weeklyEquivalentLabel(for: product),
                     onSelect: { viewModel.selectedProduct = product }
                 )
+            }
+        }
+    }
+
+    // MARK: - Competitor Comparison
+
+    private var competitorComparisonSection: some View {
+        HStack(spacing: PCTheme.Spacing.sm) {
+            Image(systemName: "info.circle.fill")
+                .font(.footnote)
+                .foregroundStyle(Color.pcTextSecondary)
+                .accessibilityHidden(true)
+
+            Text("Popular cleaner apps charge $415/year. PhoneCare is $19.99.")
+                .typography(.footnote, color: .pcTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(PCTheme.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                .fill(Color.pcSurface)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Compare Plans
+
+    private var comparePlansSection: some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showComparePlans.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("Compare plans")
+                        .typography(.subheadline, color: .pcPrimary)
+                    Spacer()
+                    Image(systemName: showComparePlans ? "chevron.up" : "chevron.down")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                }
+            }
+            .accessibilityHint(showComparePlans ? "Collapse plan comparison" : "Expand plan comparison")
+
+            if showComparePlans {
+                VStack(spacing: PCTheme.Spacing.xs) {
+                    HStack {
+                        Text("Plan")
+                            .typography(.caption, color: .pcTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Per year")
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+                    Divider()
+                    ForEach(viewModel.products, id: \.id) { product in
+                        HStack {
+                            Text(subscriptionManager.periodLabel(for: product).capitalized)
+                                .typography(.subheadline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(viewModel.annualCostLabel(for: product) ?? product.displayPrice)
+                                .typography(.subheadline, color: .pcAccent)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                .padding(PCTheme.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                        .fill(Color.pcSurface)
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }

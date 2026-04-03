@@ -48,6 +48,7 @@ struct PaywallOnboardingView: View {
                             PlanOptionRow(
                                 product: product,
                                 periodLabel: subscriptionManager.periodLabel(for: product),
+                                weeklyEquivalentLabel: weeklyEquivalentLabel(for: product),
                                 isSelected: selectedProductID == product.id,
                                 isRecommended: isAnnual(product)
                             ) {
@@ -56,6 +57,25 @@ struct PaywallOnboardingView: View {
                         }
                     }
                     .padding(.horizontal, PCTheme.Spacing.md)
+
+                    // Competitor comparison
+                    HStack(spacing: PCTheme.Spacing.sm) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Color.pcTextSecondary)
+                            .accessibilityHidden(true)
+                        Text("Popular cleaner apps charge $415/year. PhoneCare is $19.99.")
+                            .typography(.footnote, color: .pcTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                    }
+                    .padding(PCTheme.Spacing.sm)
+                    .background(
+                        RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                            .fill(Color.pcSurface)
+                    )
+                    .padding(.horizontal, PCTheme.Spacing.md)
+                    .accessibilityElement(children: .combine)
                 }
                 .padding(.horizontal, PCTheme.Spacing.md)
             }
@@ -148,6 +168,13 @@ struct PaywallOnboardingView: View {
         product.subscription?.subscriptionPeriod.unit == .year
     }
 
+    private func weeklyEquivalentLabel(for product: Product) -> String? {
+        guard isAnnual(product) else { return nil }
+        let weekly = product.price / 52
+        let formatted = product.priceFormatStyle.format(weekly)
+        return "That's just \(formatted)/week"
+    }
+
     private func handlePurchase() async {
         guard let productID = selectedProductID,
               let product = subscriptionManager.products.first(where: { $0.id == productID }) else {
@@ -195,6 +222,7 @@ private struct BenefitRow: View {
 private struct PlanOptionRow: View {
     let product: Product
     let periodLabel: String
+    var weeklyEquivalentLabel: String? = nil
     let isSelected: Bool
     let isRecommended: Bool
     let onTap: () -> Void
@@ -225,8 +253,14 @@ private struct PlanOptionRow: View {
 
                 Spacer()
 
-                Text(product.displayPrice)
-                    .typography(.headline, color: .pcAccent)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(product.displayPrice)
+                        .typography(.headline, color: .pcAccent)
+                    if let weekly = weeklyEquivalentLabel {
+                        Text(weekly)
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+                }
             }
             .padding(PCTheme.Spacing.md)
             .background(
