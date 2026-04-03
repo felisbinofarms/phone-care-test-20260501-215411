@@ -6,6 +6,7 @@ struct PaywallOnboardingView: View {
     let onContinue: () -> Void
     let onSkip: () -> Void
 
+    @Environment(\.openURL) private var openURL
     @State private var selectedProductID: String?
     @State private var isPurchasing = false
     @State private var showError = false
@@ -103,7 +104,7 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Terms") {
-                        // Open terms URL
+                        openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/terms")!)
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
@@ -113,7 +114,7 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Privacy") {
-                        // Open privacy URL
+                        openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/privacy")!)
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)

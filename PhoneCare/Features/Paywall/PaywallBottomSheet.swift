@@ -3,6 +3,7 @@ import SwiftUI
 struct PaywallBottomSheet: View {
     @Environment(SubscriptionManager.self) private var subscriptionManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var viewModel = PaywallViewModel()
 
     var contextualBenefit: String?
@@ -173,13 +174,13 @@ struct PaywallBottomSheet: View {
 
             HStack(spacing: PCTheme.Spacing.md) {
                 Button("Terms of Use") {
-                    // Open terms URL
+                    openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/terms")!)
                 }
                 .textLinkStyle()
                 .font(.caption)
 
                 Button("Privacy Policy") {
-                    // Open privacy URL
+                    openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/privacy")!)
                 }
                 .textLinkStyle()
                 .font(.caption)
