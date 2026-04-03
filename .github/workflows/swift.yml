@@ -12,24 +12,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: List available simulators
-      run: |
-        xcrun simctl list devices available | grep "iPhone" | head -20
     - name: Build
       run: |
         xcodebuild build \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination 'generic/platform=iOS Simulator' \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO
     - name: Run tests
       run: |
-        SIM_NAME=$(xcrun simctl list devices available | grep "iPhone" | head -1 | sed 's/^[[:space:]]*//' | sed 's/ (.*//')
-        echo "Using simulator: $SIM_NAME"
         xcodebuild test \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination "platform=iOS Simulator,name=$SIM_NAME" \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO
