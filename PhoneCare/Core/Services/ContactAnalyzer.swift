@@ -206,7 +206,9 @@ final class ContactAnalyzer {
         for backup in backups {
             let contacts = try CNContactVCardSerialization.contacts(with: backup.originalContactData)
             guard let contact = contacts.first else { continue }
-            let mutable = contact.mutableCopy() as! CNMutableContact
+            guard let mutable = contact.mutableCopy() as? CNMutableContact else {
+                throw ContactMergeError.mergeFailed("Could not create mutable contact for restore")
+            }
             saveRequest.add(mutable, toContainerWithIdentifier: nil)
             backup.isRestored = true
         }

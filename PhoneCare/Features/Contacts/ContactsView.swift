@@ -54,6 +54,13 @@ struct ContactsView: View {
         .sheet(isPresented: $showPaywall) {
             PaywallBottomSheet()
         }
+        .alert(item: $viewModel.alertInfo) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 
     // MARK: - Summary
@@ -95,6 +102,7 @@ struct ContactsView: View {
                         viewModel.mergeAll(dataManager: dataManager)
                     }
                     .secondaryStyle()
+                    .disabled(viewModel.isMerging)
                     .accessibilityHint("Automatically merge all duplicate contacts")
                 }
             }
@@ -186,6 +194,7 @@ struct ContactsView: View {
                     viewModel.startScan(dataManager: dataManager)
                 }
                 .primaryCTAStyle()
+                .disabled(viewModel.isScanning || viewModel.isMerging)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.md)

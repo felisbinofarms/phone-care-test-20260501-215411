@@ -1,5 +1,12 @@
 import SwiftUI
 import SwiftData
+import Contacts
+
+struct ContactsAlertInfo: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
 
 struct DuplicateContactGroup: Identifiable {
     let id: String
@@ -31,11 +38,12 @@ final class ContactsViewModel {
 
     var showUndoToast: Bool = false
     private(set) var lastMergedCount: Int = 0
+    private(set) var isMerging: Bool = false
+    var alertInfo: ContactsAlertInfo?
 
     private let analyzer = ContactAnalyzer()
     private let undoManager = CleanupUndoManager()
     private var lastUndoActionID: UUID?
-    private var lastUndoContext: (primaryID: String, mergeDate: Date)?
 
     // MARK: - Load
 
@@ -57,8 +65,21 @@ final class ContactsViewModel {
     // MARK: - Scan
 
     func startScan(dataManager: DataManager) {
+        let authorization = CNContactStore.authorizationStatus(for: .contacts)
+        guard authorization == .authorized else {
+            duplicateGroups = []
+            duplicateCount = 0
+            totalContacts = 0
+            scanComplete = false
+            alertInfo = ContactsAlertInfo(
+                title: "Contacts Access Needed",
+                message: "Please allow Contacts access in Settings to scan for duplicates."
+            )
+            return
+        }
+
         isScanning = true
-        Task {
+        Task { @MainActor in
             let result = await analyzer.analyze()
             totalContacts = result.totalContacts
             duplicateCount = result.duplicateCount
@@ -73,47 +94,58 @@ final class ContactsViewModel {
 
     func mergeGroup(_ group: DuplicateContactGroup, dataManager: DataManager) {
         guard group.contactIDs.count > 1 else { return }
+        guard !isMerging else { return }
 
-        Task {
-            let removeIDs = group.contactIDs.filter { $0 != group.suggestedPrimaryID }
-            let mergeDate = Date()
+        Task { @MainActor in
             do {
-                try await analyzer.mergeContacts(
-                    keepIdentifier: group.suggestedPrimaryID,
-                    removeIdentifiers: removeIDs,
-                    dataManager: dataManager
-                )
-
-                let actionID = UUID()
-                lastUndoActionID = actionID
-                lastUndoContext = (primaryID: group.suggestedPrimaryID, mergeDate: mergeDate)
-
-                undoManager.registerAction(
-                    id: actionID,
-                    actionType: .contactMerge,
-                    itemCount: removeIDs.count
-                ) {
-                    try await self.analyzer.restoreMergedContacts(
-                        mergedInto: group.suggestedPrimaryID,
-                        mergedAfter: mergeDate,
-                        dataManager: dataManager
-                    )
-                }
+                isMerging = true
+                let token = try await performMerge(group, dataManager: dataManager)
+                registerUndo(for: [token], dataManager: dataManager)
 
                 duplicateGroups.removeAll { $0.id == group.id }
-                duplicateCount = max(0, duplicateCount - removeIDs.count)
-                lastMergedCount = removeIDs.count
+                duplicateCount = max(0, duplicateCount - token.mergedCount)
+                lastMergedCount = token.mergedCount
                 showUndoToast = true
             } catch {
-                // Keep UI stable on merge failure.
+                alertInfo = ContactsAlertInfo(
+                    title: "Merge Could Not Finish",
+                    message: "We could not merge those contacts right now. Please try again."
+                )
             }
+            isMerging = false
         }
     }
 
     func mergeAll(dataManager: DataManager) {
+        guard !isMerging else { return }
         let groups = duplicateGroups
-        for group in groups {
-            mergeGroup(group, dataManager: dataManager)
+        guard !groups.isEmpty else { return }
+
+        Task { @MainActor in
+            isMerging = true
+            var mergedTokens: [MergeUndoToken] = []
+            var totalMerged = 0
+
+            do {
+                for group in groups {
+                    let token = try await performMerge(group, dataManager: dataManager)
+                    mergedTokens.append(token)
+                    duplicateGroups.removeAll { $0.id == group.id }
+                    totalMerged += token.mergedCount
+                }
+
+                duplicateCount = max(0, duplicateCount - totalMerged)
+                lastMergedCount = totalMerged
+                registerUndo(for: mergedTokens, dataManager: dataManager)
+                showUndoToast = totalMerged > 0
+            } catch {
+                alertInfo = ContactsAlertInfo(
+                    title: "Merge Could Not Finish",
+                    message: "Some contacts could not be merged. Nothing else was changed after the error."
+                )
+            }
+
+            isMerging = false
         }
     }
 
@@ -123,8 +155,15 @@ final class ContactsViewModel {
             return
         }
 
-        Task {
-            _ = try? await undoManager.undo(id: actionID)
+        Task { @MainActor in
+            do {
+                _ = try await undoManager.undo(id: actionID)
+            } catch {
+                alertInfo = ContactsAlertInfo(
+                    title: "Undo Could Not Finish",
+                    message: "We could not restore those contacts right now."
+                )
+            }
             showUndoToast = false
             startScan(dataManager: dataManager)
         }
@@ -170,7 +209,54 @@ final class ContactsViewModel {
                 try dataManager.save(scan)
             }
         } catch {
-            // Keep scan UX responsive even if persistence fails.
+            alertInfo = ContactsAlertInfo(
+                title: "Results Saved Partially",
+                message: "Scan completed, but we could not save counts for later screens."
+            )
+        }
+    }
+
+    private struct MergeUndoToken {
+        let primaryID: String
+        let mergeDate: Date
+        let mergedCount: Int
+    }
+
+    private func performMerge(_ group: DuplicateContactGroup, dataManager: DataManager) async throws -> MergeUndoToken {
+        let removeIDs = group.contactIDs.filter { $0 != group.suggestedPrimaryID }
+        let mergeDate = Date()
+
+        try await analyzer.mergeContacts(
+            keepIdentifier: group.suggestedPrimaryID,
+            removeIdentifiers: removeIDs,
+            dataManager: dataManager
+        )
+
+        return MergeUndoToken(
+            primaryID: group.suggestedPrimaryID,
+            mergeDate: mergeDate,
+            mergedCount: removeIDs.count
+        )
+    }
+
+    private func registerUndo(for tokens: [MergeUndoToken], dataManager: DataManager) {
+        guard !tokens.isEmpty else { return }
+
+        let actionID = UUID()
+        lastUndoActionID = actionID
+
+        undoManager.registerAction(
+            id: actionID,
+            actionType: .contactMerge,
+            itemCount: tokens.reduce(0) { $0 + $1.mergedCount }
+        ) {
+            for token in tokens {
+                try await self.analyzer.restoreMergedContacts(
+                    mergedInto: token.primaryID,
+                    mergedAfter: token.mergeDate,
+                    dataManager: dataManager
+                )
+            }
         }
     }
 }
