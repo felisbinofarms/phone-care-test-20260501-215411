@@ -1,9 +1,9 @@
 import SwiftUI
 import SwiftData
+import Photos
 
 enum PhotoCategory: String, CaseIterable, Identifiable {
     case duplicates = "Duplicates"
-    case similar = "Similar"
     case screenshots = "Screenshots"
     case blurry = "Blurry"
     case largeVideos = "Large Videos"
@@ -13,7 +13,6 @@ enum PhotoCategory: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .duplicates:  return "plus.square.on.square"
-        case .similar:     return "square.on.square"
         case .screenshots: return "rectangle.portrait"
         case .blurry:      return "camera.metering.unknown"
         case .largeVideos: return "video.fill"
@@ -25,15 +24,19 @@ enum PhotoCategory: String, CaseIterable, Identifiable {
 @Observable
 final class PhotosViewModel {
 
+    // MARK: - Dependencies
+
+    private let analyzer = PhotoAnalyzer()
+
     // MARK: - State
 
     var selectedCategory: PhotoCategory = .duplicates
     private(set) var isScanning: Bool = false
     private(set) var scanComplete: Bool = false
+    private(set) var permissionDenied: Bool = false
 
     // Group data
     private(set) var duplicateGroups: [[String]] = []
-    private(set) var similarGroups: [[String]] = []
     private(set) var screenshotIDs: [String] = []
     private(set) var blurryIDs: [String] = []
     private(set) var largeVideoIDs: [String] = []
@@ -50,12 +53,16 @@ final class PhotosViewModel {
     // Premium gating
     private(set) var freeGroupLimit: Int = 3
 
+    // MARK: - Progress (pass-through from analyzer)
+
+    var scanProgress: Double { analyzer.progress }
+    var scanStatusMessage: String { analyzer.statusMessage }
+
     // MARK: - Computed
 
     var currentResultCount: Int {
         switch selectedCategory {
         case .duplicates:  return duplicateGroups.count
-        case .similar:     return similarGroups.count
         case .screenshots: return screenshotIDs.count
         case .blurry:      return blurryIDs.count
         case .largeVideos: return largeVideoIDs.count
@@ -67,9 +74,6 @@ final class PhotosViewModel {
         case .duplicates:
             let count = duplicateGroups.reduce(0) { $0 + $1.count }
             return count == 0 ? "No duplicates found" : "\(duplicateGroups.count) groups with \(count) photos"
-        case .similar:
-            let count = similarGroups.reduce(0) { $0 + $1.count }
-            return count == 0 ? "No similar photos found" : "\(similarGroups.count) groups with \(count) photos"
         case .screenshots:
             return screenshotIDs.isEmpty ? "No screenshots found" : "\(screenshotIDs.count) screenshots"
         case .blurry:
@@ -94,7 +98,6 @@ final class PhotosViewModel {
             )
             if let cache = caches.first {
                 duplicateGroups = cache.decodedDuplicateGroups()
-                similarGroups = cache.decodedSimilarGroups()
                 screenshotIDs = cache.decodedScreenshotIDs()
                 blurryIDs = cache.decodedBlurryIDs()
                 largeVideoIDs = cache.decodedLargeVideoIDs()
@@ -107,12 +110,27 @@ final class PhotosViewModel {
 
     // MARK: - Scan
 
-    func startScan() {
+    func startScan(dataManager: DataManager) {
         isScanning = true
-        // The actual scan is handled by PhotoAnalyzer service.
-        // This ViewModel will be refreshed when it completes.
+        permissionDenied = false
         Task {
-            try? await Task.sleep(for: .seconds(2))
+            let analysisResult = await analyzer.analyze()
+
+            let authStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            guard authStatus == .authorized || authStatus == .limited else {
+                isScanning = false
+                permissionDenied = true
+                return
+            }
+
+            await analyzer.saveCache(to: dataManager, analysisResult: analysisResult)
+            updateScanResult(dataManager: dataManager, analysisResult: analysisResult)
+
+            duplicateGroups = analysisResult.duplicateGroups.map { $0.assetIdentifiers }
+            screenshotIDs = analysisResult.screenshotIdentifiers
+            blurryIDs = analysisResult.blurryIdentifiers
+            largeVideoIDs = analysisResult.largeVideoIdentifiers
+
             isScanning = false
             scanComplete = true
         }
@@ -167,8 +185,25 @@ final class PhotosViewModel {
         return Array(duplicateGroups.prefix(freeGroupLimit))
     }
 
-    func visibleSimilarGroups(isPremium: Bool) -> [[String]] {
-        if isPremium { return similarGroups }
-        return Array(similarGroups.prefix(freeGroupLimit))
+    // MARK: - Persistence
+
+    private func updateScanResult(dataManager: DataManager, analysisResult: PhotoAnalysisResult) {
+        do {
+            if let existing = try dataManager.latestScanResult() {
+                existing.photoCount = analysisResult.totalPhotos
+                existing.duplicatePhotoCount = analysisResult.duplicateCount
+                existing.duplicatePhotoSize = analysisResult.estimatedDuplicateSavings
+                try dataManager.saveContext()
+            } else {
+                let scanResult = ScanResult(
+                    photoCount: analysisResult.totalPhotos,
+                    duplicatePhotoCount: analysisResult.duplicateCount,
+                    duplicatePhotoSize: analysisResult.estimatedDuplicateSavings
+                )
+                try dataManager.save(scanResult)
+            }
+        } catch {
+            // Persistence failure shouldn't block scan results from showing
+        }
     }
 }
