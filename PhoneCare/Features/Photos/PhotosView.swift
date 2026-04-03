@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PhotosView: View {
     @Environment(DataManager.self) private var dataManager
@@ -19,6 +20,8 @@ struct PhotosView: View {
                     // Content
                     if viewModel.isScanning {
                         scanningState
+                    } else if viewModel.permissionDenied {
+                        permissionNeededState
                     } else if !viewModel.scanComplete {
                         scanPrompt
                     } else if viewModel.hasResults {
@@ -131,8 +134,6 @@ struct PhotosView: View {
         switch viewModel.selectedCategory {
         case .duplicates:
             duplicatesContent
-        case .similar:
-            similarContent
         case .screenshots:
             PhotoGridView(
                 photoIDs: viewModel.screenshotIDs,
@@ -178,29 +179,6 @@ struct PhotosView: View {
         }
     }
 
-    private var similarContent: some View {
-        let groups = viewModel.visibleSimilarGroups(isPremium: subscriptionManager.isPremium)
-        return VStack(spacing: PCTheme.Spacing.md) {
-            ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
-                DuplicateGroupView(
-                    group: group,
-                    groupIndex: index,
-                    selectedIDs: viewModel.selectedPhotoIDs,
-                    onToggle: { viewModel.toggleSelection($0) },
-                    onKeepBest: {
-                        let rest = Array(group.dropFirst())
-                        viewModel.selectAll(in: rest)
-                    }
-                )
-            }
-
-            premiumGateMessage(
-                totalCount: viewModel.similarGroups.count,
-                shownCount: groups.count
-            )
-        }
-    }
-
     @ViewBuilder
     private func premiumGateMessage(totalCount: Int, shownCount: Int) -> some View {
         if !subscriptionManager.isPremium && totalCount > shownCount {
@@ -240,7 +218,7 @@ struct PhotosView: View {
                     .typography(.headline)
                     .multilineTextAlignment(.center)
 
-                Text("We will look for duplicates, similar photos, screenshots, and blurry images.")
+                Text("We will look for duplicates, screenshots, blurry photos, and large videos.")
                     .typography(.subheadline, color: .pcTextSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -289,6 +267,34 @@ struct PhotosView: View {
                 Text("No \(viewModel.selectedCategory.rawValue.lowercased()) found. Your photo library is tidy.")
                     .typography(.subheadline, color: .pcTextSecondary)
                     .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, PCTheme.Spacing.lg)
+        }
+    }
+
+    private var permissionNeededState: some View {
+        CardView {
+            VStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: "photo.badge.exclamationmark")
+                    .font(.system(size: 48))
+                    .foregroundStyle(Color.pcTextSecondary)
+                    .voiceOverHidden()
+
+                Text("Photos access needed")
+                    .typography(.headline)
+
+                Text("To find duplicates and free up space, PhoneCare needs access to your photo library. You can grant access in Settings.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .primaryCTAStyle()
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.lg)
