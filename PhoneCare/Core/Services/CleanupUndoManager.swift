@@ -38,7 +38,7 @@ final class CleanupUndoManager {
 
     // MARK: - Private
 
-    private var undoHandlers: [UUID: @Sendable () async throws -> Void] = [:]
+    private var undoHandlers: [UUID: () async throws -> Void] = [:]
     private var expirationTimers: [UUID: Task<Void, Never>] = [:]
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PhoneCare", category: "CleanupUndoManager")
 
@@ -50,7 +50,7 @@ final class CleanupUndoManager {
         actionType: CleanupActionType,
         itemCount: Int,
         duration: TimeInterval? = nil,
-        undoHandler: @escaping @Sendable () async throws -> Void
+        undoHandler: @escaping () async throws -> Void
     ) {
         let effectiveDuration = duration ?? defaultDuration(for: actionType)
         let deadline = Date().addingTimeInterval(effectiveDuration)
