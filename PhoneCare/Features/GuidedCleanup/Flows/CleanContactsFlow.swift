@@ -42,6 +42,7 @@ struct CleanContactsFlow: View {
     @State private var scanResult: ContactAnalysisResult?
     @State private var isScanning = false
     @State private var isMerging = false
+    @State private var mergeError = false
     @State private var showPaywall = false
 
     var body: some View {
@@ -108,8 +109,10 @@ struct CleanContactsFlow: View {
         }
 
         isMerging = true
+        mergeError = false
         Task {
             var mergedCount = 0
+            var failedCount = 0
             for group in result.duplicateGroups {
                 let removeIDs = group.contactIdentifiers.filter { $0 != group.suggestedPrimaryIdentifier }
                 guard !removeIDs.isEmpty else { continue }
@@ -121,12 +124,18 @@ struct CleanContactsFlow: View {
                     )
                     mergedCount += removeIDs.count
                 } catch {
-                    // Continue with remaining groups if one fails
+                    failedCount += 1
                 }
             }
-            coordinator.recordCleanup(items: mergedCount, bytes: 0)
             isMerging = false
-            coordinator.next()
+            if mergedCount > 0 {
+                coordinator.recordCleanup(items: mergedCount, bytes: 0)
+                coordinator.next()
+            } else if failedCount > 0 {
+                mergeError = true
+            } else {
+                coordinator.next()
+            }
         }
     }
 
@@ -180,6 +189,9 @@ struct CleanContactsFlow: View {
                             Text("Merging contacts...")
                                 .typography(.subheadline, color: .pcTextSecondary)
                         }
+                    } else if mergeError {
+                        Text("Some contacts couldn't be merged. You can try again or skip this step.")
+                            .typography(.subheadline, color: .pcTextSecondary)
                     } else {
                         Text("Your contacts are safe:")
                             .typography(.subheadline)

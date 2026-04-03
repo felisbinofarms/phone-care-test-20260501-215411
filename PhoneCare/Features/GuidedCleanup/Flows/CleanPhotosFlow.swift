@@ -143,14 +143,17 @@ struct CleanPhotosFlow: View {
                 try await PHPhotoLibrary.shared().performChanges { @Sendable in
                     PHAssetChangeRequest.deleteAssets(assetsToDelete)
                 }
+                // Deletion confirmed by user via system dialog.
+                // Photos move to Recently Deleted (30-day recovery).
                 let deletedCount = assetArray.count
                 let bytesFreed = Int64(deletedCount) * estimatedBytesEach
                 coordinator.recordCleanup(items: deletedCount, bytes: bytesFreed)
+                isDeleting = false
+                onComplete()
             } catch {
-                // User cancelled the system deletion dialog — that's fine
+                // User cancelled the system deletion dialog — stay on step so they can retry or skip.
+                isDeleting = false
             }
-            isDeleting = false
-            onComplete()
         }
     }
 
