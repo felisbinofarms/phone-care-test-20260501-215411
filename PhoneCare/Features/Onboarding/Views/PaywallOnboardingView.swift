@@ -104,7 +104,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Terms") {
-                        openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/terms")!)
+                        if let url = PhoneCareLegalLinks.termsOfUse {
+                            openURL(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
@@ -114,7 +116,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Privacy") {
-                        openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/privacy")!)
+                        if let url = PhoneCareLegalLinks.privacyPolicy {
+                            openURL(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)

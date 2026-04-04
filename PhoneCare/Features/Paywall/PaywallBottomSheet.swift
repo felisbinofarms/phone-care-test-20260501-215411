@@ -174,13 +174,17 @@ struct PaywallBottomSheet: View {
 
             HStack(spacing: PCTheme.Spacing.md) {
                 Button("Terms of Use") {
-                    openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/terms")!)
+                    if let url = PhoneCareLegalLinks.termsOfUse {
+                        openURL(url)
+                    }
                 }
                 .textLinkStyle()
                 .font(.caption)
 
                 Button("Privacy Policy") {
-                    openURL(URL(string: "https://pyroforbes.github.io/phone-care-ios/privacy")!)
+                    if let url = PhoneCareLegalLinks.privacyPolicy {
+                        openURL(url)
+                    }
                 }
                 .textLinkStyle()
                 .font(.caption)

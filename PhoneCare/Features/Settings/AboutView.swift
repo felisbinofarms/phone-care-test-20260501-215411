@@ -1,6 +1,12 @@
 import SwiftUI
 
+enum PhoneCareLegalLinks {
+    static let termsOfUse = URL(string: "https://pyroforbes.github.io/phone-care-ios/terms")
+    static let privacyPolicy = URL(string: "https://pyroforbes.github.io/phone-care-ios/privacy")
+}
+
 struct AboutView: View {
+    @Environment(\.openURL) private var openURL
     let appVersion: String
 
     var body: some View {
@@ -25,13 +31,17 @@ struct AboutView: View {
                 CardView {
                     VStack(spacing: 0) {
                         linkRow(icon: "doc.text", title: "Privacy Policy") {
-                            // Open privacy policy URL
+                            if let url = PhoneCareLegalLinks.privacyPolicy {
+                                openURL(url)
+                            }
                         }
 
                         Divider().foregroundStyle(Color.pcBorder)
 
-                        linkRow(icon: "doc.text", title: "Terms of Service") {
-                            // Open terms URL
+                        linkRow(icon: "doc.text", title: "Terms of Use") {
+                            if let url = PhoneCareLegalLinks.termsOfUse {
+                                openURL(url)
+                            }
                         }
 
                         Divider().foregroundStyle(Color.pcBorder)
