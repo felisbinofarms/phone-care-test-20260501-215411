@@ -144,10 +144,10 @@ struct SettingsView: View {
                         .voiceOverHidden()
 
                     VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                        Text("Data & Privacy")
+                        Text(PrivacyManifesto.sectionTitle)
                             .typography(.subheadline)
 
-                        Text("Your data stays on your device")
+                        Text(PrivacyManifesto.summaryText)
                             .typography(.footnote, color: .pcTextSecondary)
                     }
 
@@ -160,6 +160,6 @@ struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Tap to view data privacy info and delete all data")
+        .accessibilityHint("Tap to read your privacy details and manage your app data")
     }
 }

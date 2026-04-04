@@ -1,5 +1,26 @@
 import SwiftUI
 
+enum PrivacyManifesto {
+    static let sectionTitle = "Your Privacy"
+    static let summaryText = "No trackers. All processing stays on your iPhone."
+    static let detailsText = "PhoneCare runs fully on-device. We do not collect personal data, use third-party analytics SDKs, or upload your photos and contacts to external servers."
+
+    static let noCollectionPoints: [String] = [
+        "No photos are uploaded",
+        "No contacts are sent to servers",
+        "No usage profiling",
+        "No advertising ID tracking",
+        "No third-party analytics SDKs"
+    ]
+
+    static let appStoreLabelTitle = "App Store Privacy Label"
+    static let appStoreLabelValue = "Data Not Collected"
+
+    // Reused by Settings surfaces and intended as the single source for legal links.
+    static let privacyPolicyURLString = "https://github.com/pyroforbes/phone-care-ios/blob/main/docs/legal/privacy-policy.md"
+    static var privacyPolicyURL: URL? { URL(string: privacyPolicyURLString) }
+}
+
 @MainActor
 @Observable
 final class SettingsViewModel {
