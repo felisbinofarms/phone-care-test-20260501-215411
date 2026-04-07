@@ -151,22 +151,25 @@ extension Product {
     }
 
     var weeklyEquivalentLabel: String? {
-        guard isAnnualPlan else { return nil }
-        let weeklyPrice = price / 52
+        guard let subscription, subscription.subscriptionPeriod.unit == .year else { return nil }
+        let weeksInPlan = Decimal(subscription.subscriptionPeriod.value * 52)
+        let weeklyPrice = price / weeksInPlan
         let formatted = weeklyPrice.formatted(priceFormatStyle)
         return "That's just \(formatted)/week"
     }
 
     var annualCostLabel: String? {
         guard let subscription else { return nil }
+        let periodValue = Decimal(subscription.subscriptionPeriod.value)
+        guard periodValue > 0 else { return nil }
         let annualPrice: Decimal
         switch subscription.subscriptionPeriod.unit {
         case .week:
-            annualPrice = price * 52
+            annualPrice = (price * 52) / periodValue
         case .month:
-            annualPrice = price * 12
+            annualPrice = (price * 12) / periodValue
         case .year:
-            annualPrice = price
+            annualPrice = price / periodValue
         default:
             return nil
         }

@@ -215,7 +215,7 @@ private struct BenefitRow: View {
 private struct PlanOptionRow: View {
     let product: Product
     let periodLabel: String
-    var weeklyEquivalentLabel: String? = nil
+    let weeklyEquivalentLabel: String?
     let isSelected: Bool
     let isRecommended: Bool
     let onTap: () -> Void
@@ -269,7 +269,13 @@ private struct PlanOptionRow: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(periodLabel) plan, \(product.displayPrice)")
+        .accessibilityLabel({
+            var label = "\(periodLabel) plan, \(product.displayPrice)"
+            if let weekly = weeklyEquivalentLabel {
+                label += ", \(weekly)"
+            }
+            return label
+        }())
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityHint(isRecommended ? "Best value" : "")
     }
