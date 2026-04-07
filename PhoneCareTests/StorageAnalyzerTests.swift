@@ -161,4 +161,30 @@ struct StorageAnalyzerTests {
         )
         #expect(result.categories.isEmpty)
     }
+
+    // MARK: - Edge cases
+
+    @Test("formattedSize handles very large values (1 TB)")
+    func formattedSize_veryLarge() {
+        let category = StorageCategoryData(
+            id: "system",
+            name: "System",
+            icon: "gear",
+            sizeInBytes: 1_099_511_627_776, // 1 TB
+            color: "pcPrimary"
+        )
+        #expect(!category.formattedSize.isEmpty)
+    }
+
+    @Test("usedPercentage for small fractional usage")
+    func usedPercentage_smallFraction() {
+        let result = StorageAnalysisResult(
+            totalBytes: 1_000_000,
+            availableBytes: 999_999,
+            categories: []
+        )
+        // 1 byte used out of 1 million — very small percentage
+        #expect(result.usedPercentage >= 0)
+        #expect(result.usedPercentage < 1)
+    }
 }

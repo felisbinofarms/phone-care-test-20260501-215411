@@ -72,17 +72,32 @@ struct ContactsViewModelTests {
 
     @Test("startScan without authorisation clears results and shows an alert")
     func startScan_unauthorized_showsAlert() {
-        // Contacts authorisation is always .notDetermined / .denied in the
-        // test environment (simulator with no real contacts permission), so
-        // calling startScan should produce an alert and leave scanComplete false.
+        // Contacts authorisation is .notDetermined / .denied in the test
+        // environment, so calling startScan should hit the guard branch,
+        // clear results, and surface an alert.
         let vm = ContactsViewModel()
-        // DataManager is unavailable here; use a minimal stub path.
-        // Since CNContactStore.authorizationStatus returns .notDetermined in
-        // the test environment, the guard fires and shows the alert.
-        // We can't pass a real DataManager without the full SwiftData stack,
-        // but we can verify that at least the guard triggers when status ≠ .authorized.
-        //
-        // The test passes as long as the scan is blocked (no crash, no scanComplete).
+        let dataManager = DataManager(inMemory: true)
+
+        vm.startScan(dataManager: dataManager)
+
+        #expect(vm.scanComplete == false)
+        #expect(vm.duplicateGroups.isEmpty)
+        #expect(vm.duplicateCount == 0)
+        #expect(vm.alertInfo != nil)
+        #expect(vm.alertInfo?.title == "Contacts Access Needed")
+    }
+
+    // MARK: - Load from DataManager
+
+    @Test("load from empty DataManager leaves counts at zero")
+    func load_emptyDataManager_zeroCounts() {
+        let vm = ContactsViewModel()
+        let dataManager = DataManager(inMemory: true)
+
+        vm.load(dataManager: dataManager)
+
+        #expect(vm.totalContacts == 0)
+        #expect(vm.duplicateCount == 0)
         #expect(vm.scanComplete == false)
     }
 

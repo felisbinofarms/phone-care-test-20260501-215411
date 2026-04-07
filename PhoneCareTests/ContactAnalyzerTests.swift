@@ -126,4 +126,27 @@ struct ContactAnalyzerTests {
         #expect(result.contactsWithoutPhone == 15)
         #expect(result.contactsWithoutEmail == 25)
     }
+
+    // MARK: - Additional phone normalization edge cases
+
+    @Test("All-spaces phone string returns empty string")
+    func normalizePhone_allSpaces() {
+        let result = ContactAnalyzer.normalizePhoneNumber("   ")
+        #expect(result.isEmpty)
+    }
+
+    @Test("Very long number is preserved as digits")
+    func normalizePhone_longNumber() {
+        let result = ContactAnalyzer.normalizePhoneNumber("+86 138 0013 8000")
+        let digits = result.filter { $0.isNumber }
+        #expect(digits == result)
+        #expect(!result.isEmpty)
+    }
+
+    @Test("Number with extension notation strips non-digits")
+    func normalizePhone_extension() {
+        let result = ContactAnalyzer.normalizePhoneNumber("(555) 867-5309 ext. 123")
+        let digits = result.filter { $0.isNumber }
+        #expect(digits == result)
+    }
 }

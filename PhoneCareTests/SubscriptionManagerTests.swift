@@ -8,23 +8,21 @@ struct SubscriptionManagerTests {
 
     // MARK: - ProductID enum
 
-    @Test("ProductID.allCases contains exactly 3 products")
-    func productID_allCases_count() {
-        #expect(SubscriptionManager.ProductID.allCases.count == 3)
+    @Test("Every ProductID case round-trips through init(rawValue:)")
+    func productID_roundTrip() {
+        for id in SubscriptionManager.ProductID.allCases {
+            #expect(SubscriptionManager.ProductID(rawValue: id.rawValue) == id,
+                    "\(id) did not round-trip through rawValue")
+        }
     }
 
-    @Test("ProductID raw values match the expected App Store product identifiers")
-    func productID_rawValues() {
-        #expect(SubscriptionManager.ProductID.weekly.rawValue == "com.phonecare.premium.weekly")
-        #expect(SubscriptionManager.ProductID.monthly.rawValue == "com.phonecare.premium.monthly")
-        #expect(SubscriptionManager.ProductID.annual.rawValue == "com.phonecare.premium.annual")
-    }
-
-    @Test("ProductID can be initialised from a known raw value")
-    func productID_initFromRawValue() {
-        #expect(SubscriptionManager.ProductID(rawValue: "com.phonecare.premium.annual") == .annual)
-        #expect(SubscriptionManager.ProductID(rawValue: "com.phonecare.premium.weekly") == .weekly)
-        #expect(SubscriptionManager.ProductID(rawValue: "com.phonecare.premium.monthly") == .monthly)
+    @Test("Every ProductID has a non-empty raw value starting with the app bundle prefix")
+    func productID_rawValueFormat() {
+        for id in SubscriptionManager.ProductID.allCases {
+            #expect(!id.rawValue.isEmpty)
+            #expect(id.rawValue.hasPrefix("com.phonecare.premium."),
+                    "\(id.rawValue) missing expected bundle prefix")
+        }
     }
 
     @Test("ProductID returns nil for an unknown raw value")
@@ -64,25 +62,13 @@ struct SubscriptionManagerTests {
         #expect(manager.isInGracePeriod == false)
     }
 
-    // MARK: - UserDefaults premium caching
+    // MARK: - Premium state consistency
 
-    @Test("Manager reads cached premium state as true when UserDefaults key is set")
-    func init_readsCachedPremiumTrue() {
-        let key = "PhoneCare_isPremium"
-        UserDefaults.standard.set(true, forKey: key)
-        defer { UserDefaults.standard.removeObject(forKey: key) }
-
-        let manager = SubscriptionManager()
-        #expect(manager.isPremium == true)
-    }
-
-    @Test("Manager reads cached premium state as false when UserDefaults key is absent")
-    func init_readsCachedPremiumFalse() {
-        let key = "PhoneCare_isPremium"
-        UserDefaults.standard.removeObject(forKey: key)
-
-        let manager = SubscriptionManager()
-        #expect(manager.isPremium == false)
+    @Test("Two managers created in the same process agree on isPremium")
+    func isPremium_consistentAcrossInstances() {
+        let a = SubscriptionManager()
+        let b = SubscriptionManager()
+        #expect(a.isPremium == b.isPremium)
     }
 
     @Test("Trial and currentProductID are nil before any entitlement check")

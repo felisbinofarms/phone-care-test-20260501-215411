@@ -113,7 +113,7 @@ struct PrivacyAuditorTests {
         #expect(result.privacyScore == 0)
     }
 
-    @Test("privacyScore is clamped between 0 and 100")
+    @Test("privacyScore preserves in-range values between 0 and 100")
     func score_range() {
         for score in [0, 50, 100] {
             let result = PrivacyAuditResult(
@@ -125,16 +125,21 @@ struct PrivacyAuditorTests {
         }
     }
 
-    // MARK: - settingsURL helpers
-
-    @Test("settingsURL returns a non-nil URL for camera")
-    func settingsURL_camera_nonNil() {
-        #expect(PrivacyAuditor.settingsURL(for: .camera) != nil)
+    @Test("Mixed permission statuses produce a mid-range score")
+    func score_midRange() {
+        // 2 appropriate out of 4 => 50%
+        let result = makeResult(statuses: [.authorized, .denied, .notDetermined, .notDetermined])
+        #expect(result.privacyScore == 50)
     }
 
-    @Test("settingsURL returns a non-nil URL for photos")
-    func settingsURL_photos_nonNil() {
-        #expect(PrivacyAuditor.settingsURL(for: .photos) != nil)
+    // MARK: - settingsURL helpers
+
+    @Test("settingsURL returns a non-nil URL for every permission type")
+    func settingsURL_allTypes_nonNil() {
+        for type in PermissionType.allCases {
+            #expect(PrivacyAuditor.settingsURL(for: type) != nil,
+                    "settingsURL returned nil for \(type.rawValue)")
+        }
     }
 
     // MARK: - Helpers

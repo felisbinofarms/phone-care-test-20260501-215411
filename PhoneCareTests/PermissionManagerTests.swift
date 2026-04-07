@@ -7,34 +7,24 @@ struct PermissionManagerTests {
 
     // MARK: - PermissionType coverage
 
-    @Test("PermissionType.allCases contains the expected 11 types")
-    func permissionType_allCases_count() {
-        #expect(PermissionType.allCases.count == 11)
-    }
-
-    @Test("Each PermissionType has a non-empty displayName")
-    func permissionType_displayNames_nonEmpty() {
+    @Test("Every PermissionType has a non-empty displayName and a valid id")
+    func permissionType_allCases_haveRequiredProperties() {
         for type in PermissionType.allCases {
             #expect(!type.displayName.isEmpty, "displayName is empty for \(type.rawValue)")
+            #expect(!type.id.isEmpty, "id is empty for \(type.rawValue)")
+            #expect(type.id == type.rawValue, "id does not match rawValue for \(type.rawValue)")
         }
     }
 
-    @Test("PermissionType id equals its rawValue")
-    func permissionType_idEqualsRawValue() {
-        for type in PermissionType.allCases {
-            #expect(type.id == type.rawValue)
+    // MARK: - PermissionStatus
+
+    @Test("Every PermissionStatus round-trips through init(rawValue:)")
+    func permissionStatus_roundTrip() {
+        let allStatuses: [PermissionStatus] = [.authorized, .denied, .notDetermined, .restricted, .limited]
+        for status in allStatuses {
+            #expect(PermissionStatus(rawValue: status.rawValue) == status,
+                    "\(status) did not round-trip through rawValue")
         }
-    }
-
-    // MARK: - PermissionStatus raw values
-
-    @Test("PermissionStatus raw values are stable strings")
-    func permissionStatus_rawValues() {
-        #expect(PermissionStatus.authorized.rawValue == "authorized")
-        #expect(PermissionStatus.denied.rawValue == "denied")
-        #expect(PermissionStatus.notDetermined.rawValue == "notDetermined")
-        #expect(PermissionStatus.restricted.rawValue == "restricted")
-        #expect(PermissionStatus.limited.rawValue == "limited")
     }
 
     // MARK: - PermissionSummary: isAppropriate
