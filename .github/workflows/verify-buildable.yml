@@ -1,0 +1,188 @@
+name: Verify Code is Buildable
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+env:
+  TEMP_REPO_PREFIX: phone-care-verify
+
+jobs:
+  verify-buildable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      temp_repo_url: ${{ steps.create-repo.outputs.repo_url }}
+      temp_repo_name: ${{ steps.create-repo.outputs.repo_name }}
+      build_status: ${{ steps.wait-build.outputs.status }}
+      build_url: ${{ steps.wait-build.outputs.build_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create temp public repository
+        id: create-repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          
+          # Generate unique repo name with timestamp
+          TIMESTAMP=$(date +%s%N | cut -b1-13)
+          TEMP_REPO="${TEMP_REPO_PREFIX}-$(date +%Y%m%d-%H%M%S)-${GITHUB_RUN_ID}"
+          
+          echo "📦 Creating temporary public repo: $TEMP_REPO"
+          
+          # Create public repo (visibility must be public for unlimited minutes)
+          gh repo create "$TEMP_REPO" \
+            --public \
+            --source=. \
+            --remote=temp \
+            --push 2>&1 | tee repo-create.log
+          
+          OWNER=$(gh repo view --json owner -q .owner.login)
+          TEMP_REPO_FULL="${OWNER}/${TEMP_REPO}"
+          REPO_URL="https://github.com/${TEMP_REPO_FULL}"
+          
+          echo "✅ Created: $REPO_URL"
+          echo "repo_url=$REPO_URL" >> $GITHUB_OUTPUT
+          echo "repo_name=$TEMP_REPO_FULL" >> $GITHUB_OUTPUT
+          echo "temp_repo=$TEMP_REPO" >> $GITHUB_OUTPUT
+
+      - name: Wait for Actions workflow to complete
+        id: wait-build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          
+          TEMP_REPO_FULL="${{ steps.create-repo.outputs.repo_name }}"
+          TEMP_REPO="${{ steps.create-repo.outputs.temp_repo }}"
+          MAX_WAIT=600  # 10 minutes
+          POLL_INTERVAL=10
+          ELAPSED=0
+          
+          echo "⏳ Waiting for build to complete on $TEMP_REPO_FULL..."
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Get latest workflow run
+            RUN_RESPONSE=$(gh run list \
+              --repo "$TEMP_REPO_FULL" \
+              --json status,conclusion,url \
+              --limit 1 2>/dev/null || echo "[]")
+            
+            if [ "$RUN_RESPONSE" = "[]" ] || [ -z "$RUN_RESPONSE" ]; then
+              echo "⏳ No workflow run yet (waiting for Actions to trigger)..."
+              sleep $POLL_INTERVAL
+              ELAPSED=$((ELAPSED + POLL_INTERVAL))
+              continue
+            fi
+            
+            STATUS=$(echo "$RUN_RESPONSE" | jq -r '.[0].status' 2>/dev/null || echo "unknown")
+            CONCLUSION=$(echo "$RUN_RESPONSE" | jq -r '.[0].conclusion' 2>/dev/null || echo "unknown")
+            RUN_URL=$(echo "$RUN_RESPONSE" | jq -r '.[0].url' 2>/dev/null || echo "")
+            
+            echo "Status: $STATUS | Conclusion: $CONCLUSION"
+            
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "✅ Build PASSED"
+                echo "status=success" >> $GITHUB_OUTPUT
+                echo "build_url=$RUN_URL" >> $GITHUB_OUTPUT
+                break
+              else
+                echo "❌ Build FAILED (conclusion: $CONCLUSION)"
+                echo "status=failure" >> $GITHUB_OUTPUT
+                echo "build_url=$RUN_URL" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+            fi
+            
+            sleep $POLL_INTERVAL
+            ELAPSED=$((ELAPSED + POLL_INTERVAL))
+          done
+          
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "❌ Timeout: build did not complete within ${MAX_WAIT}s"
+            echo "status=timeout" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Report PR comment (PR verification)
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = "${{ steps.wait-build.outputs.build_status }}";
+            const tempRepoUrl = "${{ steps.create-repo.outputs.repo_url }}";
+            const buildUrl = "${{ steps.wait-build.outputs.build_url }}";
+            
+            let body = '';
+            if (status === 'success') {
+              body = `✅ **Build Verification Passed**\n\n`;
+              body += `Your code is buildable! Temporary verification repo has been cleaned up.\n\n`;
+              body += `[View Build Details](${buildUrl})`;
+            } else if (status === 'timeout') {
+              body = `⏱️ **Build Verification Timeout**\n\n`;
+              body += `The build did not complete within 10 minutes. Check the [temporary repo](${tempRepoUrl}) for details.`;
+            } else {
+              body = `❌ **Build Verification Failed**\n\n`;
+              body += `Your code does not compile. Review the [build logs](${buildUrl}).`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Clean up temporary repository
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TEMP_REPO="${{ steps.create-repo.outputs.repo_name }}"
+          
+          if [ -z "$TEMP_REPO" ]; then
+            echo "⚠️  No temp repo name available, skipping cleanup"
+            exit 0
+          fi
+          
+          echo "🧹 Cleaning up temporary repo: $TEMP_REPO"
+          gh repo delete "$TEMP_REPO" --yes 2>&1 || echo "⚠️  Repo deletion had issues (may already be deleted)"
+          echo "✅ Cleanup complete"
+
+      - name: Set commit status
+        if: github.event_name == 'push' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS="${{ steps.wait-build.outputs.build_status }}"
+          BUILD_URL="${{ steps.wait-build.outputs.build_url }}"
+          
+          if [ "$STATUS" = "success" ]; then
+            STATE="success"
+            DESCRIPTION="Build verified on temp public repo"
+          else
+            STATE="failure"
+            DESCRIPTION="Build verification failed"
+          fi
+          
+          echo "Setting commit status: $STATE"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # We can use GitHub API to set status
+          gh api repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -F state="$STATE" \
+            -F description="$DESCRIPTION" \
+            -F context="build/verify" \
+            -F target_url="$BUILD_URL" || echo "Note: Commit status may have limited support"
