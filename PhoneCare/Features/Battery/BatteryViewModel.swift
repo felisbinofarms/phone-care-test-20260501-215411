@@ -137,12 +137,39 @@ final class BatteryViewModel {
     private func generateTips() -> [BatteryTip] {
         var result: [BatteryTip] = []
 
+        // Condition-based tips (highest priority first)
+
         if thermalState >= 2 {
             result.append(BatteryTip(
                 id: "thermal",
                 icon: "thermometer.sun.fill",
                 title: "Phone is warm",
                 description: "Try removing the case and moving to a cooler spot. Avoid using it while charging."
+            ))
+        }
+
+        if let cap = maxCapacity, cap < 0.8 {
+            result.append(BatteryTip(
+                id: "replace",
+                icon: "wrench.and.screwdriver.fill",
+                title: "Battery has aged",
+                description: "Your battery capacity is at \(Int(cap * 100))%. Avoid draining to 0% to slow further wear. You may want to get it replaced."
+            ))
+        } else if let cap = maxCapacity, cap >= 0.9 {
+            result.append(BatteryTip(
+                id: "healthy",
+                icon: "heart.fill",
+                title: "Battery is in great shape",
+                description: "Your battery capacity is at \(Int(cap * 100))%. Keep it healthy by avoiding extreme heat and cold."
+            ))
+        }
+
+        if isCharging && currentLevel > 0.8 {
+            result.append(BatteryTip(
+                id: "unplug",
+                icon: "powerplug.fill",
+                title: "Good time to unplug",
+                description: "Your battery is at \(levelPercentage)%. Unplugging around 80% helps preserve long-term battery health."
             ))
         }
 
@@ -155,11 +182,20 @@ final class BatteryViewModel {
             ))
         }
 
+        // Always-shown general tips
+
         result.append(BatteryTip(
             id: "charging",
             icon: "battery.100percent.bolt",
             title: "Charge between 20% and 80%",
             description: "Keeping your battery in this range can help maintain its long-term health."
+        ))
+
+        result.append(BatteryTip(
+            id: "optimized",
+            icon: "gearshape.fill",
+            title: "Enable Optimized Charging",
+            description: "Turn on Optimized Battery Charging in Settings > Battery to let your iPhone learn your routine and reduce battery aging."
         ))
 
         result.append(BatteryTip(
@@ -169,14 +205,12 @@ final class BatteryViewModel {
             description: "Auto-brightness adjusts your screen to save battery based on your surroundings."
         ))
 
-        if let cap = maxCapacity, cap < 0.8 {
-            result.append(BatteryTip(
-                id: "replace",
-                icon: "wrench.and.screwdriver.fill",
-                title: "Battery capacity is low",
-                description: "Your battery capacity is at \(Int(cap * 100))%. You may want to consider getting it replaced for better performance."
-            ))
-        }
+        result.append(BatteryTip(
+            id: "overnight",
+            icon: "moon.fill",
+            title: "Avoid overnight charging without Optimized Charging",
+            description: "Charging all night can add heat stress. If you charge overnight, make sure Optimized Charging is on."
+        ))
 
         return result
     }
