@@ -50,9 +50,11 @@ jobs:
             exit 1
           fi
           echo "📦 Packaging $APP_PATH into IPA..."
+          rm -rf Payload PhoneCare.ipa
           mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -qr PhoneCare.ipa Payload/
+          ditto "$APP_PATH" Payload/PhoneCare.app
+          test -f Payload/PhoneCare.app/Info.plist
+          ditto -c -k --sequesterRsrc --keepParent Payload PhoneCare.ipa
           rm -rf Payload
           unzip -l PhoneCare.ipa | head -40
           ls -lh PhoneCare.ipa
