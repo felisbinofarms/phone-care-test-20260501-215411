@@ -20,6 +20,12 @@ enum PhotoCategory: String, CaseIterable, Identifiable {
     }
 }
 
+struct ScreenshotAgeGroup: Identifiable {
+    let title: String
+    let ids: [String]
+    var id: String { title }
+}
+
 @MainActor
 @Observable
 final class PhotosViewModel {
@@ -86,6 +92,60 @@ final class PhotosViewModel {
     var selectedCount: Int { selectedPhotoIDs.count }
 
     var hasResults: Bool { currentResultCount > 0 }
+
+    // MARK: - Screenshot Age Groups
+
+    func screenshotsByAge() -> [ScreenshotAgeGroup] {
+        guard !screenshotIDs.isEmpty else { return [] }
+
+        let now = Date()
+        let calendar = Calendar.current
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: now)!
+        let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now)!
+
+        var thisWeek: [String] = []
+        var lastMonth: [String] = []
+        var olderThan30: [String] = []
+        var olderThan90: [String] = []
+
+        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: screenshotIDs, options: nil)
+        fetchResult.enumerateObjects { asset, _, _ in
+            let id = asset.localIdentifier
+            guard let date = asset.creationDate else {
+                olderThan90.append(id)
+                return
+            }
+            if date >= oneWeekAgo {
+                thisWeek.append(id)
+            } else if date >= oneMonthAgo {
+                lastMonth.append(id)
+            } else if date >= threeMonthsAgo {
+                olderThan30.append(id)
+            } else {
+                olderThan90.append(id)
+            }
+        }
+
+        var groups: [ScreenshotAgeGroup] = []
+        if !thisWeek.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "This Week", ids: thisWeek))
+        }
+        if !lastMonth.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "Last Month", ids: lastMonth))
+        }
+        if !olderThan30.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "Older than 30 Days", ids: olderThan30))
+        }
+        if !olderThan90.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "Older than 90 Days", ids: olderThan90))
+        }
+        return groups
+    }
+
+    func selectAllInAgeGroup(_ group: ScreenshotAgeGroup) {
+        selectedPhotoIDs.formUnion(group.ids)
+    }
 
     // MARK: - Load
 
