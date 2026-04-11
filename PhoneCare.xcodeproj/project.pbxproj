@@ -30,6 +30,8 @@
 		3D70035268709273C5033FFA /* PhoneCareUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C5BCDB9A09D856BB75906C /* PhoneCareUITests.swift */; };
 		411B3CE1AD52D712B1372BC2 /* ScanResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BB2671EA6061D9189450A3 /* ScanResult.swift */; };
 		416C6F9EF6526AF9BDEDC5E9 /* ResultsReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2771A6505F8469804D029B7 /* ResultsReportView.swift */; };
+		1AA4005801B2C3D4E5F60708 /* CleanupStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB4005801B2C3D4E5F60708 /* CleanupStats.swift */; };
+		1AA4005802B2C3D4E5F60708 /* AnnualReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB4005802B2C3D4E5F60708 /* AnnualReportView.swift */; };
 		4375245E2BFF254AFEA1224E /* DateFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C01AD87BD9496C61CCB1F0E /* DateFormattingTests.swift */; };
 		492134013D79B58E5A39117D /* PhotosViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60FABD5F0F9BF787511F9649 /* PhotosViewModel.swift */; };
 		4AAD976C0CEF6988A63FCA35 /* PermissionPrimingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB0AFF854419C63FD675BA0 /* PermissionPrimingView.swift */; };
@@ -180,6 +182,8 @@
 		618FA1166B4AF994E47EC2DD /* CleanPhotosFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanPhotosFlow.swift; sourceTree = "<group>"; };
 		62A6BDAA0FD79E3064E4E6E0 /* PrivacyAuditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyAuditor.swift; sourceTree = "<group>"; };
 		67CB2B8B970BD8084063F92F /* ContactBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactBackup.swift; sourceTree = "<group>"; };
+		1BB4005801B2C3D4E5F60708 /* CleanupStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanupStats.swift; sourceTree = "<group>"; };
+		1BB4005802B2C3D4E5F60708 /* AnnualReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnualReportView.swift; sourceTree = "<group>"; };
 		6AB0AFF854419C63FD675BA0 /* PermissionPrimingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionPrimingView.swift; sourceTree = "<group>"; };
 		6CCB316D6D800D719D56B92F /* BatteryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryViewModel.swift; sourceTree = "<group>"; };
 		74AD62477048E26D9EF67F19 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -390,6 +394,7 @@
 			isa = PBXGroup;
 			children = (
 				BAC0F36B0F545AEDF7362551 /* BatterySnapshot.swift */,
+				1BB4005801B2C3D4E5F60708 /* CleanupStats.swift */,
 				9F0DF3A2C5A9C8D3EE8F6682 /* CleanupAction.swift */,
 				67CB2B8B970BD8084063F92F /* ContactBackup.swift */,
 				50162EBD28F4204154C51AE5 /* PhotoScanCache.swift */,
@@ -547,6 +552,7 @@
 			isa = PBXGroup;
 			children = (
 				DAC27BB4238C94AC3D2AC2D4 /* AboutView.swift */,
+				1BB4005802B2C3D4E5F60708 /* AnnualReportView.swift */,
 				82F317FF12D3FE56A3E0B743 /* AppearancePickerView.swift */,
 				A07931E89D3A810B228D2966 /* DataPrivacyView.swift */,
 				464A3CD0A7B27402566F16A7 /* SettingsView.swift */,
@@ -735,6 +741,7 @@
 			files = (
 				C70623975300C4D5882051C9 /* AboutView.swift in Sources */,
 				E1DE050A20FAB6777AE1F199 /* AppState.swift in Sources */,
+				1AA4005802B2C3D4E5F60708 /* AnnualReportView.swift in Sources */,
 				F0CEE4F2A8218B0CD205DCDA /* AppearancePickerView.swift in Sources */,
 				2A96FE4DEFF1AEA0926B7468 /* AssetThumbnailView.swift in Sources */,
 				CBDAF5AE8DFD6125F570040C /* BatchDeleteSheet.swift in Sources */,
@@ -752,6 +759,7 @@
 				079A3F12CA18936375A736BB /* CleanupUndoManager.swift in Sources */,
 				B641BC377773DC99A5B6FDD3 /* Color+Theme.swift in Sources */,
 				DBBE804E1162E023C0E72E70 /* CompletionCelebrationView.swift in Sources */,
+				1AA4005801B2C3D4E5F60708 /* CleanupStats.swift in Sources */,
 				FDFF65119C4E119F053AE129 /* ContactAnalyzer.swift in Sources */,
 				A4CA81871F05A2A4038031BF /* ContactBackup.swift in Sources */,
 				97710889D6844B5F5F6C6DA6 /* ContactsView.swift in Sources */,
