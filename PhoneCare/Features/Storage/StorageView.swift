@@ -117,7 +117,11 @@ struct StorageView: View {
 
                 ForEach(viewModel.categories) { category in
                     NavigationLink {
-                        CategoryDrillDownView(category: category)
+                        if category.id == "apps" {
+                            AppStorageWithScreenTimeView(category: category)
+                        } else {
+                            CategoryDrillDownView(category: category)
+                        }
                     } label: {
                         categoryRow(category)
                     }
