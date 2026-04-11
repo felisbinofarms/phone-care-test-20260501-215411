@@ -26,6 +26,7 @@ jobs:
 
       - name: Build PhoneCare app
         run: |
+          set -eo pipefail
           xcodebuild -project PhoneCare.xcodeproj \
             -scheme ${{ env.SCHEME }} \
             -configuration ${{ env.CONFIGURATION }} \
