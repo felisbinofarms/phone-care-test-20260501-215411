@@ -53,6 +53,7 @@
 		7F90009CB8A2680D1D3BF730 /* PhoneFeelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43849488C3D494A69C847A1 /* PhoneFeelingView.swift */; };
 		866D9FAD4C2B4E45294BD44F /* StorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F519C15DFEE46180A918D3 /* StorageView.swift */; };
 		86F71929C4554EDB0C98CB45 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20FA7F83762C51B4B146FD2 /* CardView.swift */; };
+		1AA40056A1B2C3D4E5F60708 /* LargeFileFinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB40056A1B2C3D4E5F60708 /* LargeFileFinderView.swift */; };
 		87FA4676947971695E8BF503 /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE1427CEB22F3BBBE5F8CB5 /* PrivacyView.swift */; };
 		8B0A25B14181A4C51D12D6EB /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607765575B3A1560E9EA7C99 /* SettingsViewModel.swift */; };
 		8CA6AC94E2820A86A07E2F20 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D926B9654E46362EB9DA8AE /* DashboardViewModel.swift */; };
@@ -189,6 +190,7 @@
 		8081E4C683CBAEB5AE60099F /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		4EE48224FDEF4C669C3D1A5D /* HonestAlternativeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HonestAlternativeView.swift; sourceTree = "<group>"; };
 		80F519C15DFEE46180A918D3 /* StorageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageView.swift; sourceTree = "<group>"; };
+		1BB40056A1B2C3D4E5F60708 /* LargeFileFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LargeFileFinderView.swift; sourceTree = "<group>"; };
 		816AA6D8266FFBD2D7A7E9A6 /* SubscriptionStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStatusView.swift; sourceTree = "<group>"; };
 		82F317FF12D3FE56A3E0B743 /* AppearancePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearancePickerView.swift; sourceTree = "<group>"; };
 		849D69FDFB5E266EAFCE59B3 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 			isa = PBXGroup;
 			children = (
 				F8933222C536D38C013B7D9B /* CategoryDrillDownView.swift */,
+				1BB40056A1B2C3D4E5F60708 /* LargeFileFinderView.swift */,
 				99CC6442587E7304739B64B5 /* StorageBarChart.swift */,
 				80F519C15DFEE46180A918D3 /* StorageView.swift */,
 				22130DF426022CBA9619EA33 /* StorageViewModel.swift */,
@@ -806,6 +809,7 @@
 				32211FBE895D61B50F806CA1 /* SharePromptView.swift in Sources */,
 				D7898F43ADA2FA812ED3996F /* StorageAnalyzer.swift in Sources */,
 				63E9247FC9BB36361617A63D /* StorageBarChart.swift in Sources */,
+				1AA40056A1B2C3D4E5F60708 /* LargeFileFinderView.swift in Sources */,
 				866D9FAD4C2B4E45294BD44F /* StorageView.swift in Sources */,
 				16548E02AB8E20278F2D05C4 /* StorageViewModel.swift in Sources */,
 				1A0DBC57169C822A7CA400F8 /* SubscriptionManager.swift in Sources */,
