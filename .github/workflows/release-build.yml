@@ -1,0 +1,65 @@
+name: Build Release (Tag Triggered)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  XCODE_VERSION: '15'
+  SCHEME: 'PhoneCare'
+  CONFIGURATION: 'Release'
+  DERIVED_DATA_PATH: 'build'
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Build PhoneCare archive
+        run: |
+          xcodebuild -project PhoneCare.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -configuration ${{ env.CONFIGURATION }} \
+            -derivedDataPath ${{ env.DERIVED_DATA_PATH }} \
+            -archivePath "build/PhoneCare.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive 2>&1 | tee build.log
+
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "build/PhoneCare.xcarchive" \
+            -exportOptionsPlist "tools/ExportOptions.plist" \
+            -exportPath "build/Release" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee export.log
+          ls -lah build/Release/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          
+          TAG="${{ github.ref_name }}"
+          RELEASE_NAME="PhoneCare $TAG"
+          RELEASE_NOTES="Version $TAG - Compiled on $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          echo "📦 Creating release: $TAG"
+          
+          gh release create "$TAG" \
+            build/Release/PhoneCare.ipa \
+            --repo ${{ github.repository }} \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_NOTES" \
+            --latest 2>&1 | tee release-create.log
+          
+          echo "✅ Release $TAG created with .ipa artifact"
