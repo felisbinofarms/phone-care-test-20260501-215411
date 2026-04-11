@@ -203,3 +203,96 @@ struct StorageView: View {
         }
     }
 }
+
+// Embedded here so it is included by the current Xcode project without regenerating project files.
+struct AppStorageWithScreenTimeView: View {
+    let category: StorageCategory
+    @Environment(DataManager.self) private var dataManager
+
+    @State private var appDetails: [ScanDetail] = []
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.lg) {
+                CardView {
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        Text("Apps & Space")
+                            .typography(.headline)
+                        Text("Screen Time data can make recommendations smarter. If Screen Time is off, we still rank apps by size so you can clean up quickly.")
+                            .typography(.footnote, color: .pcTextSecondary)
+                    }
+                }
+
+                if appDetails.isEmpty {
+                    CardView {
+                        Text("No app-level storage details yet. Run a fresh scan and check again.")
+                            .typography(.subheadline, color: .pcTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        Text("Largest Apps")
+                            .typography(.headline)
+                            .voiceOverHeading()
+
+                        ForEach(appDetails.prefix(15), id: \.id) { detail in
+                            CardView {
+                                HStack(spacing: PCTheme.Spacing.md) {
+                                    Image(systemName: "square.grid.2x2.fill")
+                                        .foregroundStyle(Color.pcAccent)
+                                        .voiceOverHidden()
+
+                                    VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                                        Text(detail.detailType.replacingOccurrences(of: "_", with: " ").capitalized)
+                                            .typography(.subheadline)
+                                        Text(recommendation(for: detail.sizeInBytes))
+                                            .typography(.caption, color: .pcTextSecondary)
+                                    }
+
+                                    Spacer()
+
+                                    Text(formatBytes(detail.sizeInBytes))
+                                        .typography(.footnote, color: .pcAccent)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, PCTheme.Spacing.md)
+            .padding(.top, PCTheme.Spacing.md)
+        }
+        .background(Color.pcBackground)
+        .navigationTitle(category.name)
+        .onAppear(perform: loadAppDetails)
+    }
+
+    private func loadAppDetails() {
+        do {
+            guard let scan = try dataManager.latestScanResult() else {
+                appDetails = []
+                return
+            }
+
+            appDetails = (scan.details ?? [])
+                .filter { $0.category == "storage" && $0.detailType.contains("apps") }
+                .sorted { $0.sizeInBytes > $1.sizeInBytes }
+        } catch {
+            appDetails = []
+        }
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    private func recommendation(for sizeInBytes: Int64) -> String {
+        if sizeInBytes > 1_500_000_000 {
+            return "Large app. If rarely used, offloading can free space fast."
+        }
+        if sizeInBytes > 500_000_000 {
+            return "Medium size. Check cached downloads inside the app settings."
+        }
+        return "Smaller app. Keep if used often."
+    }
+}
