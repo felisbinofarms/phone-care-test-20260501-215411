@@ -1,7 +1,9 @@
 import SwiftUI
+import StoreKit
 
 struct AboutView: View {
     let appVersion: String
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
@@ -25,14 +27,16 @@ struct AboutView: View {
                 CardView {
                     VStack(spacing: 0) {
                         linkRow(icon: "doc.text", title: "Privacy Policy") {
-                            // Open privacy policy URL
+                            if let url = PrivacyManifesto.privacyPolicyURL { openURL(url) }
                         }
+                        .accessibilityIdentifier("about.privacyPolicy")
 
                         Divider().foregroundStyle(Color.pcBorder)
 
                         linkRow(icon: "doc.text", title: "Terms of Service") {
-                            // Open terms URL
+                            if let url = PrivacyManifesto.termsOfServiceURL { openURL(url) }
                         }
+                        .accessibilityIdentifier("about.termsOfService")
 
                         Divider().foregroundStyle(Color.pcBorder)
 
@@ -41,12 +45,14 @@ struct AboutView: View {
                                 UIApplication.shared.open(url)
                             }
                         }
+                        .accessibilityIdentifier("about.contactSupport")
 
                         Divider().foregroundStyle(Color.pcBorder)
 
                         linkRow(icon: "star", title: "Rate PhoneCare") {
-                            // Open App Store review URL
+                            requestReview()
                         }
+                        .accessibilityIdentifier("about.rateApp")
                     }
                 }
 
@@ -57,6 +63,7 @@ struct AboutView: View {
             .padding(.horizontal, PCTheme.Spacing.md)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.about")
         .navigationTitle("About")
     }
 
@@ -82,5 +89,15 @@ struct AboutView: View {
         }
         .buttonStyle(.plain)
         .accessibleTapTarget()
+    }
+
+    private func requestReview() {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }) else {
+            return
+        }
+
+        AppStore.requestReview(in: scene)
     }
 }
