@@ -30,7 +30,7 @@ struct BatchDeleteSheet: View {
                 .multilineTextAlignment(.center)
 
             // Description
-            Text("This will free up about \(formatBytes(estimatedSize)). Deleted photos go to your Recently Deleted album where you can recover them for 30 days.")
+            Text("This will free up about \(formatBytes(estimatedSize)). iOS keeps deleted photos in Recently Deleted for 30 days, so you can recover them there if needed.")
                 .typography(.subheadline, color: .pcTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, PCTheme.Spacing.md)

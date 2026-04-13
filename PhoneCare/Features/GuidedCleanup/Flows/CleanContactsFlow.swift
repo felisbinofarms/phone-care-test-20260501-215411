@@ -198,7 +198,7 @@ struct CleanContactsFlow: View {
                     }
                     tipRow("A backup is created before any changes")
                     tipRow("Undo any merge within 30 days")
-                    tipRow("Original contacts are never permanently lost")
+                    tipRow("Original contacts are backed up for 30 days")
                 }
             }
         default:
