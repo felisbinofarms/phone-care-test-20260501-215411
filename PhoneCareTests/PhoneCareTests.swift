@@ -44,7 +44,6 @@ struct PhoneCareTests {
                 "import Alamofire",
                 "import FacebookLogin",
                 "import GoogleSignIn",
-                "import AppTrackingTransparency",
                 "URLSession(",
                 "URLSession."
             ]
