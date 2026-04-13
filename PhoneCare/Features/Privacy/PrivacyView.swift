@@ -21,6 +21,7 @@ struct PrivacyView: View {
             .padding(.bottom, PCTheme.Spacing.xl)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.privacy")
         .navigationTitle("Privacy")
         .refreshable {
             viewModel.load(permissionManager: permissionManager)
@@ -51,6 +52,7 @@ struct PrivacyView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.sm)
         }
+        .accessibilityIdentifier("privacy.score")
     }
 
     // MARK: - Summary Stats
@@ -76,6 +78,7 @@ struct PrivacyView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(count) \(label)")
+        .accessibilityIdentifier("privacy.stat.\(label.lowercased().replacingOccurrences(of: " ", with: "-"))")
     }
 
     // MARK: - Permission List
@@ -103,6 +106,7 @@ struct PrivacyView: View {
                         permissionRow(info)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("privacy.permission.\(info.type.displayName.lowercased().replacingOccurrences(of: " ", with: "-"))")
                 }
             }
         }

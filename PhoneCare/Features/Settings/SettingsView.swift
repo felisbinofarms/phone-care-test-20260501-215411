@@ -29,6 +29,7 @@ struct SettingsView: View {
             .padding(.bottom, PCTheme.Spacing.xl)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.settings")
         .navigationTitle("Settings")
         .onAppear {
             viewModel.load(dataManager: dataManager, appState: appState)
@@ -72,6 +73,7 @@ struct SettingsView: View {
                 Toggle("Weekly health check reminder", isOn: $viewModel.weeklyNotification)
                     .typography(.subheadline)
                     .tint(Color.pcAccent)
+                    .accessibilityIdentifier("settings.notification.weekly")
                     .onChange(of: viewModel.weeklyNotification) { _, _ in
                         viewModel.saveNotifications(dataManager: dataManager)
                     }
@@ -81,6 +83,7 @@ struct SettingsView: View {
                 Toggle("Duplicate photo alerts", isOn: $viewModel.duplicateAlerts)
                     .typography(.subheadline)
                     .tint(Color.pcAccent)
+                    .accessibilityIdentifier("settings.notification.duplicates")
                     .onChange(of: viewModel.duplicateAlerts) { _, _ in
                         viewModel.saveNotifications(dataManager: dataManager)
                     }
@@ -90,6 +93,7 @@ struct SettingsView: View {
                 Toggle("Battery tips", isOn: $viewModel.batteryAlerts)
                     .typography(.subheadline)
                     .tint(Color.pcAccent)
+                    .accessibilityIdentifier("settings.notification.battery")
                     .onChange(of: viewModel.batteryAlerts) { _, _ in
                         viewModel.saveNotifications(dataManager: dataManager)
                     }
@@ -127,6 +131,7 @@ struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.about")
         .accessibilityHint("Tap for app information, support, and legal links")
     }
 
@@ -160,6 +165,7 @@ struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.dataPrivacy")
         .accessibilityHint("Tap to read your privacy details and manage your app data")
     }
 }
