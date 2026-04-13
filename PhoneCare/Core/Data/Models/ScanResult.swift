@@ -10,6 +10,7 @@ final class ScanResult {
 
     var totalStorage: Int64 = 0
     var usedStorage: Int64 = 0
+    var recoverableStorage: Int64 = 0
 
     // MARK: - Photos
 
@@ -55,6 +56,7 @@ final class ScanResult {
         scanDate: Date = Date(),
         totalStorage: Int64 = 0,
         usedStorage: Int64 = 0,
+        recoverableStorage: Int64 = 0,
         photoCount: Int = 0,
         duplicatePhotoCount: Int = 0,
         duplicatePhotoSize: Int64 = 0,
@@ -69,6 +71,7 @@ final class ScanResult {
         self.scanDate = scanDate
         self.totalStorage = totalStorage
         self.usedStorage = usedStorage
+        self.recoverableStorage = recoverableStorage
         self.photoCount = photoCount
         self.duplicatePhotoCount = duplicatePhotoCount
         self.duplicatePhotoSize = duplicatePhotoSize

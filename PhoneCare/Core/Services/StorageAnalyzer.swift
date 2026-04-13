@@ -21,7 +21,20 @@ struct StorageCategoryData: Sendable, Identifiable {
 struct StorageAnalysisResult: Sendable {
     let totalBytes: Int64
     let availableBytes: Int64
+    let recoverableBytes: Int64
     var categories: [StorageCategoryData]
+
+    init(
+        totalBytes: Int64,
+        availableBytes: Int64,
+        recoverableBytes: Int64 = 0,
+        categories: [StorageCategoryData]
+    ) {
+        self.totalBytes = totalBytes
+        self.availableBytes = availableBytes
+        self.recoverableBytes = recoverableBytes
+        self.categories = categories
+    }
 
     var usedBytes: Int64 { totalBytes - availableBytes }
 
@@ -73,7 +86,7 @@ final class StorageAnalyzer {
         }
 
         // Step 1: Get total and available capacity
-        let (total, available) = fetchDiskCapacity()
+        let (total, available, recoverable) = fetchDiskCapacity()
         progress = 0.3
         statusMessage = "Reading storage details..."
 
@@ -127,6 +140,7 @@ final class StorageAnalyzer {
         let analysisResult = StorageAnalysisResult(
             totalBytes: total,
             availableBytes: available,
+            recoverableBytes: recoverable,
             categories: categories
         )
         result = analysisResult
@@ -138,7 +152,8 @@ final class StorageAnalyzer {
     func saveScanResult(to dataManager: DataManager, analysisResult: StorageAnalysisResult) async {
         let scanResult = ScanResult(
             totalStorage: analysisResult.totalBytes,
-            usedStorage: analysisResult.usedBytes
+            usedStorage: analysisResult.usedBytes,
+            recoverableStorage: analysisResult.recoverableBytes
         )
 
         for category in analysisResult.categories where category.id != "available" {
@@ -163,21 +178,23 @@ final class StorageAnalyzer {
 
     // MARK: - Private Helpers
 
-    private func fetchDiskCapacity() -> (total: Int64, available: Int64) {
+    private func fetchDiskCapacity() -> (total: Int64, available: Int64, recoverable: Int64) {
         do {
             let homeURL = URL(fileURLWithPath: NSHomeDirectory())
             let values = try homeURL.resourceValues(forKeys: [
                 .volumeTotalCapacityKey,
                 .volumeAvailableCapacityForImportantUsageKey,
+                .volumeAvailableCapacityForOpportunisticUsageKey,
             ])
 
             let total = Int64(values.volumeTotalCapacity ?? 0)
             let available = values.volumeAvailableCapacityForImportantUsage ?? 0
+            let recoverable = values.volumeAvailableCapacityForOpportunisticUsage ?? available
 
-            return (total, available)
+            return (total, available, recoverable)
         } catch {
             logger.error("Failed to read disk capacity: \(error.localizedDescription)")
-            return (0, 0)
+            return (0, 0, 0)
         }
     }
 
