@@ -1,5 +1,14 @@
 import SwiftUI
 
+enum LaunchArguments {
+    static let skipOnboardingForUITests = "UITestsSkipOnboarding"
+    static let skipStoreKitForUITests = "UITestsSkipStoreKit"
+
+    static func contains(_ argument: String) -> Bool {
+        ProcessInfo.processInfo.arguments.contains(argument)
+    }
+}
+
 @Observable
 final class AppState {
     var hasCompletedOnboarding: Bool = false {
@@ -14,7 +23,11 @@ final class AppState {
     }
 
     init() {
-        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        if LaunchArguments.contains(LaunchArguments.skipOnboardingForUITests) {
+            self.hasCompletedOnboarding = true
+        } else {
+            self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        }
         let rawMode = UserDefaults.standard.integer(forKey: "appearanceMode")
         self.appearanceMode = AppearanceMode(rawValue: rawMode) ?? .system
     }

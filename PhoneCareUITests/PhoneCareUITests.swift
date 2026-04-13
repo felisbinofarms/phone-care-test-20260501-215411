@@ -1,10 +1,66 @@
 import XCTest
 
+private enum UITestLaunchArguments {
+    static let skipOnboarding = "UITestsSkipOnboarding"
+    static let skipStoreKit = "UITestsSkipStoreKit"
+}
+
 @MainActor
 final class PhoneCareUITests: XCTestCase {
-    func testAppLaunches() throws {
+    private func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += [
+            UITestLaunchArguments.skipOnboarding,
+            UITestLaunchArguments.skipStoreKit
+        ]
+        return app
+    }
+
+    /// Returns the first element with the given accessibility identifier, regardless of element type.
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    func testAppLaunches() throws {
+        let app = makeApp()
         app.launch()
         XCTAssertTrue(app.exists)
     }
+
+    func testMainTabNavigationShowsCoreScreens() throws {
+        let app = makeApp()
+        app.launch()
+
+        XCTAssertTrue(element("screen.dashboard", in: app).waitForExistence(timeout: 5))
+
+        app.tabBars.buttons["Storage"].tap()
+        XCTAssertTrue(element("screen.storage", in: app).waitForExistence(timeout: 2))
+
+        app.tabBars.buttons["Privacy"].tap()
+        XCTAssertTrue(element("screen.privacy", in: app).waitForExistence(timeout: 2))
+
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(element("screen.settings", in: app).waitForExistence(timeout: 2))
+    }
+
+    func testSettingsShowsStableLinksAndToggles() throws {
+        let app = makeApp()
+        app.launch()
+
+        app.tabBars.buttons["Settings"].tap()
+
+        XCTAssertTrue(app.switches["settings.notification.weekly"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.switches["settings.notification.duplicates"].exists)
+        XCTAssertTrue(app.switches["settings.notification.battery"].exists)
+        XCTAssertTrue(app.buttons["settings.about"].exists)
+        XCTAssertTrue(app.buttons["settings.dataPrivacy"].exists)
+
+        app.buttons["settings.about"].tap()
+        XCTAssertTrue(element("screen.about", in: app).waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["about.privacyPolicy"].exists)
+        XCTAssertTrue(app.buttons["about.termsOfService"].exists)
+        XCTAssertTrue(app.buttons["about.contactSupport"].exists)
+        XCTAssertTrue(app.buttons["about.rateApp"].exists)
+    }
 }
+
