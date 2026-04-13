@@ -19,6 +19,8 @@ enum PrivacyManifesto {
     // Reused by Settings surfaces and intended as the single source for legal links.
     static let privacyPolicyURLString = "https://github.com/pyroforbes/phone-care-ios/blob/main/docs/legal/privacy-policy.md"
     static var privacyPolicyURL: URL? { URL(string: privacyPolicyURLString) }
+    static let termsOfServiceURLString = "https://github.com/pyroforbes/phone-care-ios/blob/main/docs/legal/terms-of-service.md"
+    static var termsOfServiceURL: URL? { URL(string: termsOfServiceURLString) }
 }
 
 @MainActor
