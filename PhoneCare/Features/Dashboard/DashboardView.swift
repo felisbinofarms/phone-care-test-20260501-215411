@@ -37,6 +37,7 @@ struct DashboardView: View {
             .padding(.top, PCTheme.Spacing.md)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.dashboard")
         .navigationTitle("Phone Health")
         .refreshable {
             viewModel.load(dataManager: dataManager, permissionManager: permissionManager)
