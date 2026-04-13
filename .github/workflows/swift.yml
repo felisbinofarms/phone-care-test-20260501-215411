@@ -12,6 +12,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Verify privacy guardrails
+      run: |
+        set -eo pipefail
+
+        ! rg -n "import (Firebase|Amplitude|Segment|Mixpanel|RevenueCat|AppsFlyer|Alamofire|FacebookLogin|GoogleSignIn|AppTrackingTransparency)" PhoneCare
+        ! rg -n "URLSession\(|URLSession\." PhoneCare
+        ! rg -n "XCRemoteSwiftPackageReference" PhoneCare.xcodeproj/project.pbxproj
+
+        if [ -f Podfile ] || [ -d Pods ]; then
+          echo "CocoaPods dependencies are not allowed"
+          exit 1
+        fi
+
     - name: Build
       run: |
         xcodebuild build \
