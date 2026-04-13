@@ -16,9 +16,15 @@ jobs:
       run: |
         set -eo pipefail
 
-        ! rg -n "import (Firebase|Amplitude|Segment|Mixpanel|RevenueCat|AppsFlyer|Alamofire|FacebookLogin|GoogleSignIn|AppTrackingTransparency)" PhoneCare
-        ! rg -n "URLSession\(|URLSession\." PhoneCare
-        ! rg -n "XCRemoteSwiftPackageReference" PhoneCare.xcodeproj/project.pbxproj
+        if command -v rg >/dev/null 2>&1; then
+          SEARCH_CMD="rg -n"
+        else
+          SEARCH_CMD="grep -R -nE"
+        fi
+
+        ! $SEARCH_CMD "import (Firebase|Amplitude|Segment|Mixpanel|RevenueCat|AppsFlyer|Alamofire|FacebookLogin|GoogleSignIn|AppTrackingTransparency)" PhoneCare
+        ! $SEARCH_CMD "URLSession\(|URLSession\." PhoneCare
+        ! $SEARCH_CMD "XCRemoteSwiftPackageReference" PhoneCare.xcodeproj/project.pbxproj
 
         if [ -f Podfile ] || [ -d Pods ]; then
           echo "CocoaPods dependencies are not allowed"
