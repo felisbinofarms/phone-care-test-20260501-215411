@@ -36,7 +36,7 @@ jobs:
         xcodebuild build \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          -destination 'generic/platform=iOS Simulator' \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO
     - name: Run tests
@@ -44,6 +44,6 @@ jobs:
         xcodebuild test \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          -destination 'generic/platform=iOS Simulator' \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO
