@@ -16,6 +16,11 @@ final class PhoneCareUITests: XCTestCase {
         return app
     }
 
+    /// Returns the first element with the given accessibility identifier, regardless of element type.
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
     func testAppLaunches() throws {
         let app = makeApp()
         app.launch()
@@ -26,16 +31,16 @@ final class PhoneCareUITests: XCTestCase {
         let app = makeApp()
         app.launch()
 
-        XCTAssertTrue(app.otherElements["screen.dashboard"].waitForExistence(timeout: 5))
+        XCTAssertTrue(element("screen.dashboard", in: app).waitForExistence(timeout: 5))
 
         app.tabBars.buttons["Storage"].tap()
-        XCTAssertTrue(app.otherElements["screen.storage"].waitForExistence(timeout: 2))
+        XCTAssertTrue(element("screen.storage", in: app).waitForExistence(timeout: 2))
 
         app.tabBars.buttons["Privacy"].tap()
-        XCTAssertTrue(app.otherElements["screen.privacy"].waitForExistence(timeout: 2))
+        XCTAssertTrue(element("screen.privacy", in: app).waitForExistence(timeout: 2))
 
         app.tabBars.buttons["Settings"].tap()
-        XCTAssertTrue(app.otherElements["screen.settings"].waitForExistence(timeout: 2))
+        XCTAssertTrue(element("screen.settings", in: app).waitForExistence(timeout: 2))
     }
 
     func testSettingsShowsStableLinksAndToggles() throws {
@@ -51,10 +56,11 @@ final class PhoneCareUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.dataPrivacy"].exists)
 
         app.buttons["settings.about"].tap()
-        XCTAssertTrue(app.otherElements["screen.about"].waitForExistence(timeout: 2))
+        XCTAssertTrue(element("screen.about", in: app).waitForExistence(timeout: 2))
         XCTAssertTrue(app.buttons["about.privacyPolicy"].exists)
         XCTAssertTrue(app.buttons["about.termsOfService"].exists)
         XCTAssertTrue(app.buttons["about.contactSupport"].exists)
         XCTAssertTrue(app.buttons["about.rateApp"].exists)
     }
 }
+
