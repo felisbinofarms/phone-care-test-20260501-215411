@@ -18,7 +18,7 @@ struct CleanPhotosFlow: View {
             FlowStep(
                 id: "duplicates",
                 title: "Remove duplicates",
-                description: "These are photos that look exactly the same. We will keep the best quality one.",
+                description: "These are photos with matching size, dimensions, and timing that might be duplicates. We will keep the version with the highest pixel count.",
                 icon: "plus.square.on.square",
                 isSkippable: true
             ),
@@ -176,9 +176,9 @@ struct CleanPhotosFlow: View {
                         Text(count > 0 ? "Found \(count) duplicate photos" : "No duplicates found")
                             .typography(.subheadline)
                     }
-                    tipRow("We compare photos pixel by pixel")
-                    tipRow("The highest quality version is kept")
-                    tipRow("Deleted photos go to Recently Deleted for 30 days")
+                    tipRow("We compare dimensions, estimated file size, and when the photos were taken")
+                    tipRow("We keep the version with the highest pixel count")
+                    tipRow("iOS keeps deleted photos in Recently Deleted for 30 days")
                 }
             }
         case "blurry":
@@ -189,8 +189,8 @@ struct CleanPhotosFlow: View {
                         Text(count > 0 ? "Found \(count) blurry photos" : "No blurry photos found")
                             .typography(.subheadline)
                     }
-                    tipRow("Photos with significant motion blur")
-                    tipRow("Out-of-focus images")
+                    tipRow("Photos with low pixel dimensions")
+                    tipRow("Smaller images are often less useful for keeping or printing")
                     tipRow("You choose which ones to remove")
                 }
             }
