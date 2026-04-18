@@ -6,6 +6,7 @@ struct PaywallOnboardingView: View {
     let onContinue: () -> Void
     let onSkip: () -> Void
 
+    @Environment(\.openURL) private var openURL
     @State private var selectedProductID: String?
     @State private var isPurchasing = false
     @State private var isLoadingProducts = false
@@ -143,7 +144,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Terms") {
-                        // Open terms URL
+                        if let url = PrivacyManifesto.termsOfServiceURL {
+                            openURL(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
@@ -153,7 +156,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Privacy") {
-                        // Open privacy URL
+                        if let url = PrivacyManifesto.privacyPolicyURL {
+                            openURL(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
