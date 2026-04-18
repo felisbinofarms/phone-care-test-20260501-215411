@@ -12,19 +12,46 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Verify privacy guardrails
+      run: |
+        set -eo pipefail
+
+        if command -v rg >/dev/null 2>&1; then
+          SEARCH_CMD="rg -n"
+        else
+          SEARCH_CMD="grep -R -nE"
+        fi
+
+        ! $SEARCH_CMD "import (Firebase|Amplitude|Segment|Mixpanel|RevenueCat|AppsFlyer|Alamofire|FacebookLogin|GoogleSignIn|AppTrackingTransparency)" PhoneCare
+        ! $SEARCH_CMD "URLSession\(|URLSession\." PhoneCare
+        ! $SEARCH_CMD "XCRemoteSwiftPackageReference" PhoneCare.xcodeproj/project.pbxproj
+
+        if [ -f Podfile ] || [ -d Pods ]; then
+          echo "CocoaPods dependencies are not allowed"
+          exit 1
+        fi
+
     - name: Build
       run: |
         xcodebuild build \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          -destination 'generic/platform=iOS Simulator' \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO
     - name: Run tests
       run: |
+        set -eo pipefail
+
+        SIMULATOR_NAME=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $1; exit}' | xargs)
+        if [ -z "$SIMULATOR_NAME" ]; then
+          echo "No available iPhone simulator found"
+          exit 1
+        fi
+
         xcodebuild test \
           -project PhoneCare.xcodeproj \
           -scheme PhoneCare \
-          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          -destination "platform=iOS Simulator,name=$SIMULATOR_NAME" \
           -skipPackagePluginValidation \
           CODE_SIGNING_ALLOWED=NO

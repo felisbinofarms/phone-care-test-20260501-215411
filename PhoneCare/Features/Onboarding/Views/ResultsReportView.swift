@@ -4,6 +4,8 @@ struct ResultsReportView: View {
     let viewModel: OnboardingViewModel
     let onContinue: () -> Void
 
+    @State private var selectedDrillDown: ResultsDrillDown?
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -40,7 +42,9 @@ struct ResultsReportView: View {
                             iconColor: .pcPrimary,
                             title: "Storage",
                             value: "\(Int(storage.usedPercentage))% used",
-                            detail: "\(storage.formattedAvailable) available of \(storage.formattedTotal)"
+                            detail: "\(storage.formattedAvailable) available of \(storage.formattedTotal)",
+                            isInteractive: true,
+                            onTap: { selectedDrillDown = .storage }
                         )
                     }
 
@@ -53,7 +57,9 @@ struct ResultsReportView: View {
                             value: "\(photos.totalPhotos) photos",
                             detail: photos.duplicateCount > 0
                                 ? "\(photos.duplicateCount) possible duplicates found"
-                                : "No duplicates found"
+                                : "No duplicates found",
+                            isInteractive: true,
+                            onTap: { selectedDrillDown = .photos }
                         )
                     }
 
@@ -66,7 +72,9 @@ struct ResultsReportView: View {
                             value: "\(contacts.totalContacts) contacts",
                             detail: contacts.duplicateCount > 0
                                 ? "\(contacts.duplicateCount) possible duplicates found"
-                                : "No duplicates found"
+                                : "No duplicates found",
+                            isInteractive: true,
+                            onTap: { selectedDrillDown = .contacts }
                         )
                     }
 
@@ -77,7 +85,9 @@ struct ResultsReportView: View {
                             iconColor: .pcAccent,
                             title: "Battery",
                             value: "\(battery.levelPercentage)%",
-                            detail: battery.state.displayName
+                            detail: battery.state.displayName,
+                            isInteractive: true,
+                            onTap: { selectedDrillDown = .battery }
                         )
                     }
 
@@ -88,7 +98,9 @@ struct ResultsReportView: View {
                             iconColor: .pcPrimary,
                             title: "Privacy",
                             value: "\(privacy.privacyScore)/100",
-                            detail: "\(privacy.reviewedCount) of \(privacy.summaries.count) permissions reviewed"
+                            detail: "\(privacy.reviewedCount) of \(privacy.summaries.count) permissions reviewed",
+                            isInteractive: true,
+                            onTap: { selectedDrillDown = .privacy }
                         )
                     }
                 }
@@ -107,10 +119,36 @@ struct ResultsReportView: View {
             .padding(.horizontal, PCTheme.Spacing.lg)
             .padding(.bottom, PCTheme.Spacing.lg)
         }
+        .sheet(item: $selectedDrillDown) { destination in
+            NavigationStack {
+                switch destination {
+                case .storage:
+                    StorageView()
+                case .photos:
+                    PhotosView()
+                case .contacts:
+                    ContactsView()
+                case .battery:
+                    BatteryView()
+                case .privacy:
+                    PrivacyView()
+                }
+            }
+        }
     }
 }
 
 // MARK: - Result Card
+
+private enum ResultsDrillDown: String, Identifiable {
+    case storage
+    case photos
+    case contacts
+    case battery
+    case privacy
+
+    var id: String { rawValue }
+}
 
 private struct ResultCard: View {
     let icon: String
@@ -118,41 +156,75 @@ private struct ResultCard: View {
     let title: String
     let value: String
     let detail: String
+    let isInteractive: Bool
+    let onTap: (() -> Void)?
+
+    init(
+        icon: String,
+        iconColor: Color,
+        title: String,
+        value: String,
+        detail: String,
+        isInteractive: Bool = false,
+        onTap: (() -> Void)? = nil
+    ) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.title = title
+        self.value = value
+        self.detail = detail
+        self.isInteractive = isInteractive
+        self.onTap = onTap
+    }
 
     var body: some View {
-        HStack(spacing: PCTheme.Spacing.md) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(iconColor)
-                .frame(width: 36, height: 36)
-                .accessibilityHidden(true)
+        Button {
+            onTap?()
+        } label: {
+            HStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(iconColor)
+                    .frame(width: 36, height: 36)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                HStack {
-                    Text(title)
-                        .typography(.headline)
+                VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                    HStack {
+                        Text(title)
+                            .typography(.headline)
 
-                    Spacer()
+                        Spacer()
 
-                    Text(value)
-                        .typography(.headline, color: .pcAccent)
+                        Text(value)
+                            .typography(.headline, color: .pcAccent)
+                    }
+
+                    Text(detail)
+                        .typography(.subheadline, color: .pcTextSecondary)
                 }
 
-                Text(detail)
-                    .typography(.subheadline, color: .pcTextSecondary)
+                if isInteractive {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                        .padding(.leading, PCTheme.Spacing.xs)
+                }
             }
+            .padding(PCTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: PCTheme.Radius.lg)
+                    .fill(Color.pcSurface)
+                    .shadow(
+                        color: PCTheme.Shadow.cardColor,
+                        radius: PCTheme.Shadow.cardRadius,
+                        x: PCTheme.Shadow.cardX,
+                        y: PCTheme.Shadow.cardY
+                    )
+            )
         }
-        .padding(PCTheme.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: PCTheme.Radius.lg)
-                .fill(Color.pcSurface)
-                .shadow(
-                    color: PCTheme.Shadow.cardColor,
-                    radius: PCTheme.Shadow.cardRadius,
-                    x: PCTheme.Shadow.cardX,
-                    y: PCTheme.Shadow.cardY
-                )
-        )
+        .buttonStyle(.plain)
+        .disabled(!isInteractive)
         .accessibilityElement(children: .combine)
+        .accessibilityHint(isInteractive ? "Double tap for details" : "Information")
     }
 }

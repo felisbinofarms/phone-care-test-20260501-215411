@@ -1,22 +1,35 @@
 import SwiftUI
 
+enum LaunchArguments {
+    static let skipOnboardingForUITests = "UITestsSkipOnboarding"
+    static let skipStoreKitForUITests = "UITestsSkipStoreKit"
+
+    static func contains(_ argument: String) -> Bool {
+        ProcessInfo.processInfo.arguments.contains(argument)
+    }
+}
+
 @Observable
 final class AppState {
-    var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") }
-        set { UserDefaults.standard.set(newValue, forKey: "hasCompletedOnboarding") }
+    var hasCompletedOnboarding: Bool = false {
+        didSet { UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
     }
 
     var selectedTab: Tab = .home
     var deepLinkTarget: DeepLink?
 
-    var appearanceMode: AppearanceMode {
-        get {
-            AppearanceMode(rawValue: UserDefaults.standard.integer(forKey: "appearanceMode")) ?? .system
+    var appearanceMode: AppearanceMode = .system {
+        didSet { UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode") }
+    }
+
+    init() {
+        if LaunchArguments.contains(LaunchArguments.skipOnboardingForUITests) {
+            self.hasCompletedOnboarding = true
+        } else {
+            self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         }
-        set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "appearanceMode")
-        }
+        let rawMode = UserDefaults.standard.integer(forKey: "appearanceMode")
+        self.appearanceMode = AppearanceMode(rawValue: rawMode) ?? .system
     }
 
     var resolvedColorScheme: ColorScheme? {

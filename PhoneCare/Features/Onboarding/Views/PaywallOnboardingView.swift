@@ -8,6 +8,7 @@ struct PaywallOnboardingView: View {
 
     @State private var selectedProductID: String?
     @State private var isPurchasing = false
+    @State private var isLoadingProducts = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -43,20 +44,39 @@ struct PaywallOnboardingView: View {
                     .padding(.horizontal, PCTheme.Spacing.md)
 
                     // Plan options
-                    VStack(spacing: PCTheme.Spacing.sm) {
-                        ForEach(sortedProducts, id: \.id) { product in
-                            PlanOptionRow(
-                                product: product,
-                                periodLabel: subscriptionManager.periodLabel(for: product),
-                                weeklyEquivalentLabel: product.weeklyEquivalentLabel,
-                                isSelected: selectedProductID == product.id,
-                                isRecommended: isAnnual(product)
-                            ) {
-                                selectedProductID = product.id
+                    if isLoadingProducts {
+                        ProgressView("Loading plans…")
+                            .padding(.vertical, PCTheme.Spacing.lg)
+                    } else if sortedProducts.isEmpty {
+                        VStack(spacing: PCTheme.Spacing.md) {
+                            Text("We couldn't load subscription plans. Please check your internet connection and try again.")
+                                .typography(.subheadline, color: .pcTextSecondary)
+                                .multilineTextAlignment(.center)
+
+                            Button("Try Again") {
+                                Task { await loadProductsWithState() }
+                            }
+                            .textLinkStyle()
+                            .accessibleTapTarget()
+                        }
+                        .padding(.horizontal, PCTheme.Spacing.md)
+                        .padding(.vertical, PCTheme.Spacing.lg)
+                    } else {
+                        VStack(spacing: PCTheme.Spacing.sm) {
+                            ForEach(sortedProducts, id: \.id) { product in
+                                PlanOptionRow(
+                                    product: product,
+                                    periodLabel: subscriptionManager.periodLabel(for: product),
+                                    weeklyEquivalentLabel: product.weeklyEquivalentLabel,
+                                    isSelected: selectedProductID == product.id,
+                                    isRecommended: isAnnual(product)
+                                ) {
+                                    selectedProductID = product.id
+                                }
                             }
                         }
+                        .padding(.horizontal, PCTheme.Spacing.md)
                     }
-                    .padding(.horizontal, PCTheme.Spacing.md)
 
                     // Competitor comparison
                     HStack(spacing: PCTheme.Spacing.sm) {
@@ -144,12 +164,7 @@ struct PaywallOnboardingView: View {
             .padding(.bottom, PCTheme.Spacing.md)
         }
         .task {
-            if subscriptionManager.products.isEmpty {
-                await subscriptionManager.loadProducts()
-            }
-            // Pre-select annual plan
-            selectedProductID = sortedProducts.first(where: { isAnnual($0) })?.id
-                ?? sortedProducts.last?.id
+            await loadProductsWithState()
         }
         .alert("Something went wrong", isPresented: $showError) {
             Button("OK") { }
@@ -166,6 +181,17 @@ struct PaywallOnboardingView: View {
 
     private func isAnnual(_ product: Product) -> Bool {
         product.subscription?.subscriptionPeriod.unit == .year
+    }
+
+    private func loadProductsWithState() async {
+        isLoadingProducts = true
+        if subscriptionManager.products.isEmpty {
+            await subscriptionManager.loadProducts()
+        }
+        isLoadingProducts = false
+        // Pre-select annual plan
+        selectedProductID = sortedProducts.first(where: { isAnnual($0) })?.id
+            ?? sortedProducts.last?.id
     }
 
     private func handlePurchase() async {

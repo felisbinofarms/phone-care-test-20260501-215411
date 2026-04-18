@@ -46,6 +46,7 @@ struct DataPrivacyView: View {
                                 Label("Read Privacy Policy", systemImage: "doc.text")
                             }
                             .secondaryStyle()
+                            .accessibilityIdentifier("dataPrivacy.readPolicy")
                             .accessibilityHint("Opens the full privacy policy")
                         }
                     }
@@ -74,6 +75,7 @@ struct DataPrivacyView: View {
                                 showFirstConfirmation = true
                             }
                             .destructiveStyle()
+                            .accessibilityIdentifier("dataPrivacy.deleteAll")
                             .disabled(isDeleting)
                         }
                     }
@@ -84,6 +86,7 @@ struct DataPrivacyView: View {
             .padding(.bottom, PCTheme.Spacing.xl)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.dataPrivacy")
         .navigationTitle("Data & Privacy")
         .alert("Delete all data?", isPresented: $showFirstConfirmation) {
             Button("Cancel", role: .cancel) { }

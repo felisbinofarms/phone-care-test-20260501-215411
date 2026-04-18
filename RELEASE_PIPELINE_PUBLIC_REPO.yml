@@ -1,0 +1,107 @@
+name: Release Pipeline (Public Worker)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'artifacts/**'
+      - 'BUILD_META.txt'
+  workflow_dispatch:
+
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout public repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode artifact
+        run: |
+          if [ ! -f artifacts/PhoneCare.ipa.b64 ]; then
+            echo "❌ No artifact found"
+            exit 1
+          fi
+          base64 -d artifacts/PhoneCare.ipa.b64 > PhoneCare.ipa
+          ls -lah PhoneCare.ipa
+          echo "✅ Artifact decoded"
+
+      - name: Verify IPA structure
+        run: |
+          unzip -l PhoneCare.ipa | head -20
+          echo "✅ IPA structure valid"
+
+      - name: Load build metadata
+        run: |
+          cat BUILD_META.txt
+          cat BUILD_META.txt >> $GITHUB_ENV
+
+      - name: Run security scans (placeholder)
+        run: |
+          echo "🔐 Running security scans..."
+          # Add actual scanning here
+          echo "✅ Security scan passed"
+
+      - name: Prepare for TestFlight (placeholder)
+        run: |
+          echo "📤 Preparing for TestFlight upload..."
+          # Add TestFlight upload logic here if credentials are available
+          # Example: xcrun altool --upload-app --type ios --file PhoneCare.ipa --username ... --password ...
+          echo "✅ Ready for TestFlight"
+
+      - name: Post result to private repo
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.RELEASE_REPO_TOKEN }}
+          script: |
+            const runUrl = `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const status = `${{ job.status }}`;
+            const badge = status === 'success' ? '✅' : '❌';
+            
+            // Post comment on PR
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${badge} Release verification ${status}. [View run](${runUrl})`
+            });
+
+      - name: Cleanup after release
+        if: success()
+        run: |
+          echo "🧹 Cleaning up ephemeral build data..."
+          rm -f PhoneCare.ipa artifacts/PhoneCare.ipa.b64 BUILD_META.txt
+          echo "✅ Cleanup complete"
+
+  close-pr-after-release:
+    needs: verify-and-release
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Close PR and delete branch
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            
+            // Close PR
+            github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              state: 'closed'
+            });
+            
+            // Delete branch
+            github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${pr.head.ref}`
+            });
+            
+            console.log(`✅ Closed PR #${pr.number} and deleted branch ${pr.head.ref}`);

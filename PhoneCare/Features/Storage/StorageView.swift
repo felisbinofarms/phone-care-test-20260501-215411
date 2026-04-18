@@ -40,6 +40,7 @@ struct StorageView: View {
             .padding(.bottom, PCTheme.Spacing.xl)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.storage")
         .navigationTitle("Storage")
         .refreshable {
             viewModel.load(dataManager: dataManager)
@@ -117,7 +118,17 @@ struct StorageView: View {
 
                 ForEach(viewModel.categories) { category in
                     NavigationLink {
-                        CategoryDrillDownView(category: category)
+                        if category.id == "apps" {
+                            AppStorageWithScreenTimeView(category: category)
+                        } else if category.id == "system" {
+                            SystemDataExplainerView(
+                                category: category,
+                                availableBytes: viewModel.freeStorage,
+                                recoverableBytes: viewModel.recoverableStorage
+                            )
+                        } else {
+                            CategoryDrillDownView(category: category)
+                        }
                     } label: {
                         categoryRow(category)
                     }
@@ -197,5 +208,246 @@ struct StorageView: View {
                 .accessibilityElement(children: .combine)
             }
         }
+    }
+}
+
+// Embedded here so it is included by the current Xcode project without regenerating project files.
+struct AppStorageWithScreenTimeView: View {
+    let category: StorageCategory
+    @Environment(DataManager.self) private var dataManager
+
+    @State private var appDetails: [ScanDetail] = []
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.lg) {
+                CardView {
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        Text("Apps & Space")
+                            .typography(.headline)
+                        Text("Screen Time data can make recommendations smarter. If Screen Time is off, we still rank apps by size so you can clean up quickly.")
+                            .typography(.footnote, color: .pcTextSecondary)
+                    }
+                }
+
+                if appDetails.isEmpty {
+                    CardView {
+                        Text("No app-level storage details yet. Run a fresh scan and check again.")
+                            .typography(.subheadline, color: .pcTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        Text("Largest Apps")
+                            .typography(.headline)
+                            .voiceOverHeading()
+
+                        ForEach(appDetails.prefix(15), id: \.id) { detail in
+                            CardView {
+                                HStack(spacing: PCTheme.Spacing.md) {
+                                    Image(systemName: "square.grid.2x2.fill")
+                                        .foregroundStyle(Color.pcAccent)
+                                        .voiceOverHidden()
+
+                                    VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                                        Text(detail.detailType.replacingOccurrences(of: "_", with: " ").capitalized)
+                                            .typography(.subheadline)
+                                        Text(recommendation(for: detail.sizeInBytes))
+                                            .typography(.caption, color: .pcTextSecondary)
+                                    }
+
+                                    Spacer()
+
+                                    Text(formatBytes(detail.sizeInBytes))
+                                        .typography(.footnote, color: .pcAccent)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, PCTheme.Spacing.md)
+            .padding(.top, PCTheme.Spacing.md)
+        }
+        .background(Color.pcBackground)
+        .navigationTitle(category.name)
+        .onAppear(perform: loadAppDetails)
+    }
+
+    private func loadAppDetails() {
+        do {
+            guard let scan = try dataManager.latestScanResult() else {
+                appDetails = []
+                return
+            }
+
+            appDetails = (scan.details ?? [])
+                .filter { $0.category == "storage" && $0.detailType.contains("apps") }
+                .sorted { $0.sizeInBytes > $1.sizeInBytes }
+        } catch {
+            appDetails = []
+        }
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    private func recommendation(for sizeInBytes: Int64) -> String {
+        if sizeInBytes > 1_500_000_000 {
+            return "Large app. If rarely used, offloading can free space fast."
+        }
+        if sizeInBytes > 500_000_000 {
+            return "Medium size. Check cached downloads inside the app settings."
+        }
+        return "Smaller app. Keep if used often."
+    }
+}
+
+// Embedded here so it is included by the current Xcode project without regenerating project files.
+struct SystemDataExplainerView: View {
+    let category: StorageCategory
+    let availableBytes: Int64
+    let recoverableBytes: Int64
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.lg) {
+                overviewCard
+                transparencyCard
+                actionSteps
+                restartTip
+            }
+            .padding(.horizontal, PCTheme.Spacing.md)
+            .padding(.top, PCTheme.Spacing.md)
+            .padding(.bottom, PCTheme.Spacing.xl)
+        }
+        .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.systemData")
+        .navigationTitle("System Data")
+    }
+
+    private var overviewCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.md) {
+                Text("What this means")
+                    .typography(.headline)
+
+                Text("System Data is iPhone space used by caches, logs, downloaded voices, temporary files, and other items Apple groups together.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: PCTheme.Spacing.md) {
+                    storageStat(title: "System Data", value: formatBytes(category.sizeInBytes))
+                    storageStat(title: "Available Now", value: formatBytes(availableBytes))
+                    storageStat(title: "Recoverable", value: formatBytes(max(recoverableBytes - availableBytes, 0)))
+                }
+            }
+        }
+    }
+
+    private var transparencyCard: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                Text("What Apple does not show apps")
+                    .typography(.headline)
+
+                Text("Apple does not let apps see the full System Data breakdown or clear it directly. We can explain what usually lives here and point you to the settings that help the most.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var actionSteps: some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+            Text("Ways to reduce it")
+                .typography(.headline)
+                .voiceOverHeading()
+
+            settingsActionCard(
+                title: "1. Clear Safari website data",
+                detail: "Web history and site data can build up over time.",
+                buttonTitle: "Open Safari Settings",
+                urlString: "App-Prefs:root=SAFARI"
+            )
+
+            settingsActionCard(
+                title: "2. Review iPhone storage",
+                detail: "Offload unused apps and check large downloads stored by apps.",
+                buttonTitle: "Open iPhone Storage",
+                urlString: "App-Prefs:root=General&path=STORAGE_MGMT"
+            )
+
+            settingsActionCard(
+                title: "3. Check downloaded music",
+                detail: "Offline songs can quietly take up a lot of space.",
+                buttonTitle: "Open Music Settings",
+                urlString: "App-Prefs:root=MUSIC"
+            )
+
+            settingsActionCard(
+                title: "4. Check downloaded podcasts",
+                detail: "Old podcast downloads are easy to forget about.",
+                buttonTitle: "Open Podcasts Settings",
+                urlString: "App-Prefs:root=PODCASTS"
+            )
+        }
+    }
+
+    private var restartTip: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                Text("5. Restart your iPhone")
+                    .typography(.headline)
+
+                Text("A restart can clear temporary caches and logs that build up during normal use. It will not remove your photos, contacts, or apps.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func storageStat(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+            Text(title)
+                .typography(.caption, color: .pcTextSecondary)
+            Text(value)
+                .typography(.subheadline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func settingsActionCard(title: String, detail: String, buttonTitle: String, urlString: String) -> some View {
+        CardView {
+            VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                Text(title)
+                    .typography(.subheadline)
+
+                Text(detail)
+                    .typography(.footnote, color: .pcTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button(buttonTitle) {
+                    openSettingsURL(urlString)
+                }
+                .secondaryStyle()
+            }
+        }
+    }
+
+    private func openSettingsURL(_ urlString: String) {
+        if let url = URL(string: urlString), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+            return
+        }
+
+        if let fallback = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(fallback)
+        }
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 }

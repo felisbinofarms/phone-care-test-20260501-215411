@@ -10,6 +10,7 @@ final class PaywallViewModel {
     private(set) var products: [Product] = []
     var selectedProduct: Product?
     private(set) var isPurchasing: Bool = false
+    private(set) var isLoadingProducts: Bool = false
     private(set) var purchaseError: String?
     private(set) var purchaseComplete: Bool = false
 
@@ -32,10 +33,12 @@ final class PaywallViewModel {
     // MARK: - Load
 
     func load(subscriptionManager: SubscriptionManager) async {
+        isLoadingProducts = true
         if subscriptionManager.products.isEmpty {
             await subscriptionManager.loadProducts()
         }
         products = subscriptionManager.products
+        isLoadingProducts = false
         // Default select the middle (monthly) product
         if selectedProduct == nil {
             selectedProduct = products.count >= 2 ? products[1] : products.first

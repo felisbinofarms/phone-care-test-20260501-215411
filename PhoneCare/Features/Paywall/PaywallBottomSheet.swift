@@ -120,18 +120,39 @@ struct PaywallBottomSheet: View {
 
     // MARK: - Products
 
+    @ViewBuilder
     private var productsSection: some View {
-        HStack(spacing: PCTheme.Spacing.sm) {
-            ForEach(viewModel.products, id: \.id) { product in
-                ProductCardView(
-                    product: product,
-                    isSelected: viewModel.selectedProduct?.id == product.id,
-                    savingsLabel: viewModel.savingsLabel(for: product),
-                    trialLabel: viewModel.trialLabel(for: product),
-                    periodLabel: subscriptionManager.periodLabel(for: product),
-                    weeklyEquivalentLabel: product.weeklyEquivalentLabel,
-                    onSelect: { viewModel.selectedProduct = product }
-                )
+        if viewModel.isLoadingProducts {
+            ProgressView("Loading plans…")
+                .padding(.vertical, PCTheme.Spacing.lg)
+        } else if viewModel.products.isEmpty {
+            VStack(spacing: PCTheme.Spacing.md) {
+                Text("We couldn't load subscription plans. Please check your internet connection and try again.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .multilineTextAlignment(.center)
+
+                Button("Try Again") {
+                    Task {
+                        await viewModel.load(subscriptionManager: subscriptionManager)
+                    }
+                }
+                .textLinkStyle()
+                .accessibleTapTarget()
+            }
+            .padding(.vertical, PCTheme.Spacing.lg)
+        } else {
+            HStack(spacing: PCTheme.Spacing.sm) {
+                ForEach(viewModel.products, id: \.id) { product in
+                    ProductCardView(
+                        product: product,
+                        isSelected: viewModel.selectedProduct?.id == product.id,
+                        savingsLabel: viewModel.savingsLabel(for: product),
+                        trialLabel: viewModel.trialLabel(for: product),
+                        periodLabel: subscriptionManager.periodLabel(for: product),
+                        weeklyEquivalentLabel: product.weeklyEquivalentLabel,
+                        onSelect: { viewModel.selectedProduct = product }
+                    )
+                }
             }
         }
     }

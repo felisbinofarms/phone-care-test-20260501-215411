@@ -12,7 +12,24 @@ enum SharePromptType {
 final class SharePromptManager {
 
     private static let cooldownInterval: TimeInterval = 7 * 24 * 60 * 60 // 7 days
-    private static let appStoreLink = "https://apps.apple.com/app/phonecare/id0000000000"
+
+    private static var shareLinkSuffix: String {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "PhoneCareAppStoreURL") as? String,
+              let url = URL(string: value),
+              !url.absoluteString.isEmpty else {
+            return ""
+        }
+
+        return " \(url.absoluteString)"
+    }
+
+    private static func appendShareLink(to message: String) -> String {
+        guard !shareLinkSuffix.isEmpty else {
+            return message
+        }
+
+        return "\(message)\(shareLinkSuffix)"
+    }
 
     func shouldShowPrompt(dataManager: DataManager) -> Bool {
         guard let prefs = try? dataManager.fetch(
@@ -45,17 +62,17 @@ final class SharePromptManager {
         switch type {
         case .photoDelete(let bytesFreed):
             let formatted = ByteCountFormatter.string(fromByteCount: bytesFreed, countStyle: .file)
-            return "I just freed up \(formatted) of space on my iPhone with PhoneCare! If your phone is always full, check it out: \(appStoreLink)"
+            return appendShareLink(to: "I just freed up \(formatted) of space on my iPhone with PhoneCare! If your phone is always full, check it out.")
         case .contactMerge(let count):
-            return "I just merged \(count) duplicate contacts with PhoneCare. My phone is so much more organized! \(appStoreLink)"
+            return appendShareLink(to: "I just merged \(count) duplicate contacts with PhoneCare. My phone is so much more organized!")
         case .guidedFlow(_, let itemsCleaned, let bytesFreed):
             if bytesFreed > 0 {
                 let formatted = ByteCountFormatter.string(fromByteCount: bytesFreed, countStyle: .file)
-                return "I just cleaned up my iPhone with PhoneCare — \(itemsCleaned) items cleaned, \(formatted) freed! Try it: \(appStoreLink)"
+                return appendShareLink(to: "I just cleaned up my iPhone with PhoneCare — \(itemsCleaned) items cleaned, \(formatted) freed! Try it.")
             }
-            return "I just cleaned up my iPhone with PhoneCare — \(itemsCleaned) items tidied up! Try it: \(appStoreLink)"
+            return appendShareLink(to: "I just cleaned up my iPhone with PhoneCare — \(itemsCleaned) items tidied up! Try it.")
         case .privacyAudit:
-            return "I just reviewed all my iPhone privacy settings with PhoneCare. Turns out I'm in great shape! \(appStoreLink)"
+            return appendShareLink(to: "I just reviewed all my iPhone privacy settings with PhoneCare. Turns out I'm in great shape!")
         }
     }
 

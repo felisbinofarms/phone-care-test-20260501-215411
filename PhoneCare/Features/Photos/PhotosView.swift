@@ -153,11 +153,7 @@ struct PhotosView: View {
         case .duplicates:
             duplicatesContent
         case .screenshots:
-            PhotoGridView(
-                photoIDs: viewModel.screenshotIDs,
-                selectedIDs: viewModel.selectedPhotoIDs,
-                onToggle: { viewModel.toggleSelection($0) }
-            )
+            screenshotsByAgeContent
         case .blurry:
             PhotoGridView(
                 photoIDs: viewModel.blurryIDs,
@@ -170,6 +166,42 @@ struct PhotosView: View {
                 selectedIDs: viewModel.selectedPhotoIDs,
                 onToggle: { viewModel.toggleSelection($0) }
             )
+        }
+    }
+
+    private var screenshotsByAgeContent: some View {
+        let ageGroups = viewModel.screenshotsByAge()
+        return VStack(spacing: PCTheme.Spacing.md) {
+            if ageGroups.isEmpty {
+                PhotoGridView(
+                    photoIDs: viewModel.screenshotIDs,
+                    selectedIDs: viewModel.selectedPhotoIDs,
+                    onToggle: { viewModel.toggleSelection($0) }
+                )
+            } else {
+                ForEach(ageGroups) { group in
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        HStack {
+                            Text("\(group.title) (\(group.ids.count))")
+                                .typography(.headline)
+
+                            Spacer()
+
+                            Button("Select All") {
+                                viewModel.selectAllInAgeGroup(group)
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Color.pcAccent)
+                        }
+
+                        PhotoGridView(
+                            photoIDs: group.ids,
+                            selectedIDs: viewModel.selectedPhotoIDs,
+                            onToggle: { viewModel.toggleSelection($0) }
+                        )
+                    }
+                }
+            }
         }
     }
 
