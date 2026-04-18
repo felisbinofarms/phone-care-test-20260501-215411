@@ -13,16 +13,17 @@ struct PermissionSummary: Sendable, Identifiable {
     let description: String
     let settingsURL: URL?
 
+    /// Canonical scoring policy for privacy permissions.
+    /// "Appropriate" = user made an intentional choice (granted, denied, limited, or restricted).
+    /// Only `notDetermined` is inappropriate — it means the permission hasn't been reviewed.
+    /// This definition is shared by PrivacyViewModel.computeScore() and DashboardViewModel.
     var isAppropriate: Bool {
         switch status {
         case .authorized, .limited:
-            // Having access is appropriate (user intentionally granted)
             return true
         case .denied, .restricted:
-            // Denied is appropriate (user made a conscious choice)
             return true
         case .notDetermined:
-            // Not yet decided -- neutral, but counts as not-yet-reviewed
             return false
         }
     }
@@ -86,7 +87,8 @@ final class PrivacyAuditor {
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PhoneCare", category: "PrivacyAuditor")
 
-    /// The permission types we audit
+    /// The permission types we audit.
+    /// Excludes unscorable permissions (e.g. localNetwork) — see PermissionType.unscorable.
     private let auditedPermissions: [PermissionType] = [
         .camera,
         .microphone,

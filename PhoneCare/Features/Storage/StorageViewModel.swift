@@ -10,6 +10,7 @@ final class StorageViewModel {
     private(set) var totalStorage: Int64 = 0
     private(set) var usedStorage: Int64 = 0
     private(set) var freeStorage: Int64 = 0
+    private(set) var recoverableStorage: Int64 = 0
     private(set) var usedPercentage: Double = 0
     private(set) var categories: [StorageCategory] = []
     private(set) var recommendations: [StorageRecommendation] = []
@@ -27,6 +28,7 @@ final class StorageViewModel {
                 totalStorage = scan.totalStorage
                 usedStorage = scan.usedStorage
                 freeStorage = scan.freeStorage
+                recoverableStorage = max(scan.recoverableStorage, scan.freeStorage)
                 usedPercentage = scan.usedStoragePercentage
                 lastScanDate = scan.scanDate
 
@@ -43,12 +45,18 @@ final class StorageViewModel {
     // MARK: - System Fallback
 
     private func loadSystemStorage() {
-        let fileManager = FileManager.default
-        if let attrs = try? fileManager.attributesOfFileSystem(forPath: NSHomeDirectory()) {
-            let total = (attrs[.systemSize] as? Int64) ?? 0
-            let free = (attrs[.systemFreeSize] as? Int64) ?? 0
+        let homeURL = URL(fileURLWithPath: NSHomeDirectory())
+        if let values = try? homeURL.resourceValues(forKeys: [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey,
+            .volumeAvailableCapacityForOpportunisticUsageKey,
+        ]) {
+            let total = Int64(values.volumeTotalCapacity ?? 0)
+            let free = values.volumeAvailableCapacityForImportantUsage ?? 0
+            let recoverable = values.volumeAvailableCapacityForOpportunisticUsage ?? free
             totalStorage = total
             freeStorage = free
+            recoverableStorage = max(recoverable, free)
             usedStorage = total - free
             usedPercentage = total > 0 ? Double(usedStorage) / Double(total) * 100 : 0
         }

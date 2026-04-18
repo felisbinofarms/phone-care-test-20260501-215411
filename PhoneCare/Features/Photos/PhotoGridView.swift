@@ -23,15 +23,7 @@ struct PhotoGridView: View {
         let isSelected = selectedIDs.contains(id)
 
         ZStack(alignment: .topTrailing) {
-            // Placeholder thumbnail
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.pcSkyLight)
-                .aspectRatio(1, contentMode: .fill)
-                .overlay {
-                    Image(systemName: "photo")
-                        .font(.title3)
-                        .foregroundStyle(Color.pcTextSecondary.opacity(0.5))
-                }
+            AssetThumbnailView(assetID: id)
 
             // Selection checkmark
             if isSelected {

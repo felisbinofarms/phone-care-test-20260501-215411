@@ -6,6 +6,8 @@ struct ContactsView: View {
     @State private var viewModel = ContactsViewModel()
     @State private var selectedGroup: DuplicateContactGroup?
     @State private var showPaywall = false
+    @State private var showSharePrompt = false
+    @State private var sharePromptManager = SharePromptManager()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -37,7 +39,23 @@ struct ContactsView: View {
                     itemCount: viewModel.lastMergedCount,
                     countdownDuration: 30,
                     onUndo: { viewModel.undoMerge(dataManager: dataManager) },
-                    onDismiss: { viewModel.showUndoToast = false }
+                    onDismiss: {
+                        viewModel.showUndoToast = false
+                        if sharePromptManager.shouldShowPrompt(dataManager: dataManager) {
+                            withAnimation { showSharePrompt = true }
+                            sharePromptManager.recordPromptShown(dataManager: dataManager)
+                        }
+                    }
+                )
+                .padding(.bottom, PCTheme.Spacing.xxl)
+            }
+
+            // Share prompt
+            if showSharePrompt {
+                SharePromptView(
+                    message: SharePromptManager.promptMessage(for: .contactMerge(count: viewModel.lastMergedCount)),
+                    shareText: SharePromptManager.shareMessage(for: .contactMerge(count: viewModel.lastMergedCount)),
+                    onDismiss: { withAnimation { showSharePrompt = false } }
                 )
                 .padding(.bottom, PCTheme.Spacing.xxl)
             }

@@ -41,6 +41,10 @@ final class UserPreferences {
 
     var paywallLastShownAt: Date?
 
+    // MARK: - Share Prompts
+
+    var sharePromptLastShownAt: Date?
+
     // MARK: - Init
 
     init(
@@ -57,7 +61,8 @@ final class UserPreferences {
         batteryAlerts: Bool = true,
         onboardingCompleted: Bool = false,
         onboardingCompletedAt: Date? = nil,
-        paywallLastShownAt: Date? = nil
+        paywallLastShownAt: Date? = nil,
+        sharePromptLastShownAt: Date? = nil
     ) {
         self.goals = goals
         self.phoneFeeling = phoneFeeling
@@ -70,5 +75,6 @@ final class UserPreferences {
         self.onboardingCompleted = onboardingCompleted
         self.onboardingCompletedAt = onboardingCompletedAt
         self.paywallLastShownAt = paywallLastShownAt
+        self.sharePromptLastShownAt = sharePromptLastShownAt
     }
 }

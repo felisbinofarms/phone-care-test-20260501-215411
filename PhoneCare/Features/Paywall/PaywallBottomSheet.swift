@@ -7,6 +7,7 @@ struct PaywallBottomSheet: View {
     @State private var viewModel = PaywallViewModel()
 
     var contextualBenefit: String?
+    @State private var showComparePlans = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,6 +28,12 @@ struct PaywallBottomSheet: View {
 
                     // Product cards
                     productsSection
+
+                    // Competitor comparison
+                    competitorComparisonSection
+
+                    // Compare plans (expandable)
+                    comparePlansSection
 
                     // Error
                     if let error = viewModel.purchaseError {
@@ -114,17 +121,113 @@ struct PaywallBottomSheet: View {
 
     // MARK: - Products
 
+    @ViewBuilder
     private var productsSection: some View {
+        if viewModel.isLoadingProducts {
+            ProgressView("Loading plans…")
+                .padding(.vertical, PCTheme.Spacing.lg)
+        } else if viewModel.products.isEmpty {
+            VStack(spacing: PCTheme.Spacing.md) {
+                Text("We couldn't load subscription plans. Please check your internet connection and try again.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .multilineTextAlignment(.center)
+
+                Button("Try Again") {
+                    Task {
+                        await viewModel.load(subscriptionManager: subscriptionManager)
+                    }
+                }
+                .textLinkStyle()
+                .accessibleTapTarget()
+            }
+            .padding(.vertical, PCTheme.Spacing.lg)
+        } else {
+            HStack(spacing: PCTheme.Spacing.sm) {
+                ForEach(viewModel.products, id: \.id) { product in
+                    ProductCardView(
+                        product: product,
+                        isSelected: viewModel.selectedProduct?.id == product.id,
+                        savingsLabel: viewModel.savingsLabel(for: product),
+                        trialLabel: viewModel.trialLabel(for: product),
+                        periodLabel: subscriptionManager.periodLabel(for: product),
+                        weeklyEquivalentLabel: product.weeklyEquivalentLabel,
+                        onSelect: { viewModel.selectedProduct = product }
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Competitor Comparison
+
+    private var competitorComparisonSection: some View {
         HStack(spacing: PCTheme.Spacing.sm) {
-            ForEach(viewModel.products, id: \.id) { product in
-                ProductCardView(
-                    product: product,
-                    isSelected: viewModel.selectedProduct?.id == product.id,
-                    savingsLabel: viewModel.savingsLabel(for: product),
-                    trialLabel: viewModel.trialLabel(for: product),
-                    periodLabel: subscriptionManager.periodLabel(for: product),
-                    onSelect: { viewModel.selectedProduct = product }
+            Image(systemName: "info.circle.fill")
+                .font(.footnote)
+                .foregroundStyle(Color.pcTextSecondary)
+                .accessibilityHidden(true)
+
+            Text(viewModel.competitorComparisonLabel())
+                .typography(.footnote, color: .pcTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(PCTheme.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                .fill(Color.pcSurface)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Compare Plans
+
+    private var comparePlansSection: some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showComparePlans.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("Compare plans")
+                        .typography(.subheadline, color: .pcPrimary)
+                    Spacer()
+                    Image(systemName: showComparePlans ? "chevron.up" : "chevron.down")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                }
+            }
+            .accessibilityHint(showComparePlans ? "Collapse plan comparison" : "Expand plan comparison")
+
+            if showComparePlans {
+                VStack(spacing: PCTheme.Spacing.xs) {
+                    HStack {
+                        Text("Plan")
+                            .typography(.caption, color: .pcTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Per year")
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+                    Divider()
+                    ForEach(viewModel.products, id: \.id) { product in
+                        HStack {
+                            Text(subscriptionManager.periodLabel(for: product).capitalized)
+                                .typography(.subheadline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(product.annualCostLabel ?? product.displayPrice)
+                                .typography(.subheadline, color: .pcAccent)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                .padding(PCTheme.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                        .fill(Color.pcSurface)
                 )
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -174,7 +277,7 @@ struct PaywallBottomSheet: View {
 
             HStack(spacing: PCTheme.Spacing.md) {
                 Button("Terms of Use") {
-                    if let url = PhoneCareLegalLinks.termsOfUse {
+                    if let url = PrivacyManifesto.termsOfServiceURL {
                         openURL(url)
                     }
                 }
@@ -182,7 +285,7 @@ struct PaywallBottomSheet: View {
                 .font(.caption)
 
                 Button("Privacy Policy") {
-                    if let url = PhoneCareLegalLinks.privacyPolicy {
+                    if let url = PrivacyManifesto.privacyPolicyURL {
                         openURL(url)
                     }
                 }

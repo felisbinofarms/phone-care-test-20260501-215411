@@ -11,6 +11,7 @@ enum OnboardingStep: Int, CaseIterable, Comparable {
     case scanning
     case results
     case personalPlan
+    case honestAlternative
     case paywall
     case welcomeHome
 
@@ -177,6 +178,12 @@ struct OnboardingCoordinator: View {
         case .personalPlan:
             PersonalPlanView(
                 viewModel: viewModel,
+                onContinue: goForward,
+                onBack: goBack
+            )
+
+        case .honestAlternative:
+            HonestAlternativeView(
                 onContinue: goForward,
                 onBack: goBack
             )

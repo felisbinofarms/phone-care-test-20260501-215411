@@ -12,6 +12,9 @@ final class SubscriptionManager {
         case weekly  = "com.phonecare.premium.weekly"
         case monthly = "com.phonecare.premium.monthly"
         case annual  = "com.phonecare.premium.annual"
+        // Future plan tiers (safe to ship before products are configured in App Store Connect).
+        case family5 = "com.phonecare.premium.family5"
+        case familyPlus = "com.phonecare.premium.familyplus"
     }
 
     // MARK: - Published State
@@ -31,12 +34,39 @@ final class SubscriptionManager {
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PhoneCare", category: "SubscriptionManager")
 
     private static let isPremiumKey = "PhoneCare_isPremium"
+    #if DEBUG
+    private static let debugPremiumBypassKey = "PhoneCare_debugPremiumBypass"
+    #endif
+
+    var hasPremiumAccess: Bool {
+        #if DEBUG
+        isPremium || debugPremiumBypassEnabled
+        #else
+        isPremium
+        #endif
+    }
+
+    #if DEBUG
+    var debugPremiumBypassEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.debugPremiumBypassKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.debugPremiumBypassKey)
+            // Reflect instantly in UI while preserving entitlement state.
+            isPremium = UserDefaults.standard.bool(forKey: Self.isPremiumKey) || newValue
+        }
+    }
+    #endif
 
     // MARK: - Init
 
     init() {
         // Restore cached premium state for instant UI.
-        isPremium = UserDefaults.standard.bool(forKey: Self.isPremiumKey)
+        let cachedPremium = UserDefaults.standard.bool(forKey: Self.isPremiumKey)
+        #if DEBUG
+        isPremium = cachedPremium || UserDefaults.standard.bool(forKey: Self.debugPremiumBypassKey)
+        #else
+        isPremium = cachedPremium
+        #endif
     }
 
     // MARK: - Transaction Listener
@@ -149,7 +179,11 @@ final class SubscriptionManager {
             }
         }
 
+        #if DEBUG
+        isPremium = foundActive || debugPremiumBypassEnabled
+        #else
         isPremium = foundActive
+        #endif
         isInTrial = trialActive
         isInGracePeriod = gracePeriod
         currentProductID = activeProductID

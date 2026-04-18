@@ -7,7 +7,8 @@ struct ProductCardView: View {
     let savingsLabel: String?
     let trialLabel: String?
     let periodLabel: String
-    var onSelect: (() -> Void)?
+    let weeklyEquivalentLabel: String?
+    let onSelect: (() -> Void)?
 
     var body: some View {
         Button {
@@ -31,6 +32,13 @@ struct ProductCardView: View {
                 // Period
                 Text("per \(periodLabel)")
                     .typography(.footnote, color: .pcTextSecondary)
+
+                // Weekly equivalent (annual plans only)
+                if let weekly = weeklyEquivalentLabel {
+                    Text(weekly)
+                        .typography(.caption, color: .pcTextSecondary)
+                        .multilineTextAlignment(.center)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.md)
@@ -45,7 +53,13 @@ struct ProductCardView: View {
         }
         .buttonStyle(.plain)
         .accessibleTapTarget()
-        .accessibilityLabel("\(product.displayPrice) per \(periodLabel)")
+        .accessibilityLabel({
+            var label = "\(product.displayPrice) per \(periodLabel)"
+            if let weekly = weeklyEquivalentLabel {
+                label += ", \(weekly)"
+            }
+            return label
+        }())
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityHint("Double tap to select this plan")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])

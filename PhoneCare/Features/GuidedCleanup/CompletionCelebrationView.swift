@@ -7,6 +7,7 @@ struct CompletionCelebrationView: View {
     var onDone: (() -> Void)?
 
     @State private var showContent = false
+    @State private var showShareSheet = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -49,11 +50,21 @@ struct CompletionCelebrationView: View {
 
             Spacer()
 
-            // Done button
-            Button("Done") {
-                onDone?()
+            // Actions
+            VStack(spacing: PCTheme.Spacing.sm) {
+                Button("Done") {
+                    onDone?()
+                }
+                .primaryCTAStyle()
+
+                Button {
+                    showShareSheet = true
+                } label: {
+                    Label("Share this win", systemImage: "square.and.arrow.up")
+                }
+                .secondaryStyle()
+                .accessibilityHint("Share your cleanup results with a friend")
             }
-            .primaryCTAStyle()
             .padding(.horizontal, PCTheme.Spacing.md)
             .padding(.bottom, PCTheme.Spacing.lg)
             .opacity(showContent ? 1.0 : 0.0)
@@ -66,6 +77,16 @@ struct CompletionCelebrationView: View {
             }
         }
         .postVoiceOverAnnouncement("Cleanup complete. \(summaryMessage)")
+        .sheet(isPresented: $showShareSheet) {
+            ActivityViewController(activityItems: [
+                SharePromptManager.shareMessage(for: .guidedFlow(
+                    flowType: flowType,
+                    itemsCleaned: itemsCleaned,
+                    bytesFreed: bytesFreed
+                ))
+            ])
+            .presentationDetents([.medium])
+        }
     }
 
     private var summaryMessage: String {

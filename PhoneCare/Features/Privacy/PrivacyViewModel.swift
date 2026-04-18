@@ -36,7 +36,7 @@ final class PrivacyViewModel {
                     type: type,
                     status: status,
                     statusColor: colorForStatus(status),
-                    statusText: textForStatus(status),
+                    statusText: textForStatus(status, type: type),
                     icon: iconForPermission(type)
                 ))
             }
@@ -50,12 +50,13 @@ final class PrivacyViewModel {
     // MARK: - Score
 
     private func computeScore(permissions: [PrivacyPermissionInfo]) -> Int {
-        guard !permissions.isEmpty else { return 100 }
-        let appropriate = permissions.filter {
-            $0.status == .denied || $0.status == .notDetermined || $0.status == .limited
-        }.count
-        // Higher score = fewer apps have full access (more restrictive is "better")
-        let ratio = Double(appropriate) / Double(permissions.count) * 100
+        // Exclude unscorable permissions (e.g. localNetwork) — iOS has no API to query them.
+        let scorable = permissions.filter { !PermissionType.unscorable.contains($0.type) }
+        guard !scorable.isEmpty else { return 100 }
+        // "Reviewed" = user made an intentional choice (any status except notDetermined).
+        // Matches PermissionSummary.isAppropriate in PrivacyAuditor — the canonical scoring policy.
+        let reviewed = scorable.filter { $0.status != .notDetermined }.count
+        let ratio = Double(reviewed) / Double(scorable.count) * 100
         return max(0, min(100, Int(ratio.rounded())))
     }
 
@@ -71,7 +72,10 @@ final class PrivacyViewModel {
         }
     }
 
-    private func textForStatus(_ status: PermissionStatus) -> String {
+    private func textForStatus(_ status: PermissionStatus, type: PermissionType) -> String {
+        if PermissionType.unscorable.contains(type) {
+            return "Review in Settings"
+        }
         switch status {
         case .authorized:     return "Allowed"
         case .denied:         return "Denied"
@@ -99,11 +103,11 @@ final class PrivacyViewModel {
 
     var scoreSummary: String {
         if privacyScore >= 76 {
-            return "Your privacy settings look great."
+            return "Your privacy settings look great. Most permissions have been reviewed."
         } else if privacyScore >= 51 {
-            return "Your privacy is in good shape. A few settings could be reviewed."
+            return "Your privacy is in good shape. A few permissions haven't been reviewed yet."
         } else {
-            return "Some of your privacy settings could be tightened up."
+            return "Several permissions haven't been reviewed yet. Tap any to learn more."
         }
     }
 

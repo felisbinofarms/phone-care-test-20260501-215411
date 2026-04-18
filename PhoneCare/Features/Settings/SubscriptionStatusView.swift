@@ -8,16 +8,22 @@ struct SubscriptionStatusView: View {
         CardView {
             VStack(alignment: .leading, spacing: PCTheme.Spacing.md) {
                 HStack {
-                    Image(systemName: subscriptionManager.isPremium ? "star.circle.fill" : "star.circle")
+                    Image(systemName: subscriptionManager.hasPremiumAccess ? "star.circle.fill" : "star.circle")
                         .font(.title2)
                         .foregroundStyle(Color.pcAccent)
                         .voiceOverHidden()
 
                     VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                        Text(subscriptionManager.isPremium ? "Premium" : "Free Plan")
+                        Text(subscriptionManager.hasPremiumAccess ? "Premium" : "Free Plan")
                             .typography(.headline)
 
-                        if subscriptionManager.isPremium {
+                        if subscriptionManager.hasPremiumAccess {
+                            #if DEBUG
+                            if subscriptionManager.debugPremiumBypassEnabled {
+                                Text("Test user access active")
+                                    .typography(.footnote, color: .pcAccent)
+                            }
+                            #endif
                             if subscriptionManager.isInTrial {
                                 Text("Free trial active")
                                     .typography(.footnote, color: .pcAccent)
@@ -35,7 +41,7 @@ struct SubscriptionStatusView: View {
                     Spacer()
                 }
 
-                if subscriptionManager.isPremium {
+                if subscriptionManager.hasPremiumAccess {
                     Divider()
                         .foregroundStyle(Color.pcBorder)
 
@@ -52,11 +58,32 @@ struct SubscriptionStatusView: View {
                     }
                     .textLinkStyle()
                     .accessibleTapTarget()
+
+                    #if DEBUG
+                    Divider()
+                        .foregroundStyle(Color.pcBorder)
+
+                    Toggle("Test user premium bypass", isOn: Binding(
+                        get: { subscriptionManager.debugPremiumBypassEnabled },
+                        set: { subscriptionManager.debugPremiumBypassEnabled = $0 }
+                    ))
+                    .typography(.subheadline)
+                    .tint(Color.pcAccent)
+                    #endif
                 } else {
                     Button("Upgrade to Premium") {
                         showPaywall = true
                     }
                     .primaryCTAStyle()
+
+                    #if DEBUG
+                    Toggle("Test user premium bypass", isOn: Binding(
+                        get: { subscriptionManager.debugPremiumBypassEnabled },
+                        set: { subscriptionManager.debugPremiumBypassEnabled = $0 }
+                    ))
+                    .typography(.subheadline)
+                    .tint(Color.pcAccent)
+                    #endif
                 }
             }
         }

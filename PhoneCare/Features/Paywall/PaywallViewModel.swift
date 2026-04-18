@@ -10,6 +10,7 @@ final class PaywallViewModel {
     private(set) var products: [Product] = []
     var selectedProduct: Product?
     private(set) var isPurchasing: Bool = false
+    private(set) var isLoadingProducts: Bool = false
     private(set) var purchaseError: String?
     private(set) var purchaseComplete: Bool = false
 
@@ -32,10 +33,12 @@ final class PaywallViewModel {
     // MARK: - Load
 
     func load(subscriptionManager: SubscriptionManager) async {
+        isLoadingProducts = true
         if subscriptionManager.products.isEmpty {
             await subscriptionManager.loadProducts()
         }
         products = subscriptionManager.products
+        isLoadingProducts = false
         // Default select the middle (monthly) product
         if selectedProduct == nil {
             selectedProduct = products.count >= 2 ? products[1] : products.first
@@ -124,5 +127,57 @@ final class PaywallViewModel {
         @unknown default:
             return "Free trial"
         }
+    }
+
+    // MARK: - Pricing Framing Helpers
+
+    func competitorComparisonLabel() -> String {
+        PaywallPricingContent.comparisonMessage(for: products)
+    }
+}
+
+enum PaywallPricingContent {
+    static let competitorAnnualCostText = "over $400/year"
+
+    static func comparisonMessage(for products: [Product]) -> String {
+        guard let annualPlan = products.first(where: { $0.isAnnualPlan }) else {
+            return "Some phone cleaner apps cost \(competitorAnnualCostText). PhoneCare keeps pricing straightforward."
+        }
+
+        return "Some phone cleaner apps cost \(competitorAnnualCostText). PhoneCare annual plan is \(annualPlan.displayPrice)/year."
+    }
+}
+
+extension Product {
+    var isAnnualPlan: Bool {
+        subscription?.subscriptionPeriod.unit == .year
+    }
+
+    var weeklyEquivalentLabel: String? {
+        guard let subscription, subscription.subscriptionPeriod.unit == .year else { return nil }
+        let weeksInPlan = Decimal(subscription.subscriptionPeriod.value * 52)
+        let weeklyPrice = price / weeksInPlan
+        let formatted = weeklyPrice.formatted(priceFormatStyle)
+        return "That's just \(formatted)/week"
+    }
+
+    var annualCostLabel: String? {
+        guard let subscription else { return nil }
+        let periodValue = Decimal(subscription.subscriptionPeriod.value)
+        guard periodValue > 0 else { return nil }
+        let annualPrice: Decimal
+        switch subscription.subscriptionPeriod.unit {
+        case .week:
+            annualPrice = (price * 52) / periodValue
+        case .month:
+            annualPrice = (price * 12) / periodValue
+        case .year:
+            annualPrice = price / periodValue
+        default:
+            return nil
+        }
+
+        let formatted = annualPrice.formatted(priceFormatStyle)
+        return "\(formatted)/year"
     }
 }

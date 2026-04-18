@@ -3,6 +3,7 @@ import SwiftUI
 struct DataPrivacyView: View {
     @Environment(DataManager.self) private var dataManager
     @Environment(AppState.self) private var appState
+    @Environment(\.openURL) private var openURL
     @State private var showFirstConfirmation = false
     @State private var showFinalConfirmation = false
     @State private var isDeleting = false
@@ -15,24 +16,38 @@ struct DataPrivacyView: View {
                 CardView {
                     VStack(alignment: .leading, spacing: PCTheme.Spacing.md) {
                         HStack(spacing: PCTheme.Spacing.md) {
-                            Image(systemName: "shield.checkered")
+                            Image(systemName: "checkmark.shield.fill")
                                 .font(.title2)
                                 .foregroundStyle(Color.pcAccent)
                                 .voiceOverHidden()
 
-                            Text("Your Data Privacy")
+                            Text(PrivacyManifesto.sectionTitle)
                                 .typography(.headline)
                         }
 
-                        Text("All your data is stored on your device. PhoneCare does not send any personal data to external servers.")
+                        Text(PrivacyManifesto.detailsText)
                             .typography(.subheadline, color: .pcTextSecondary)
                             .fixedSize(horizontal: false, vertical: true)
 
+                        noTrackersBadge
+
                         VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
-                            privacyPoint("Scan results stay on your phone")
-                            privacyPoint("No photos leave your device")
-                            privacyPoint("Contact data is never uploaded")
-                            privacyPoint("No third-party analytics")
+                            ForEach(PrivacyManifesto.noCollectionPoints, id: \.self) { item in
+                                privacyPoint(item)
+                            }
+                        }
+
+                        appStoreLabelCard
+
+                        if let policyURL = PrivacyManifesto.privacyPolicyURL {
+                            Button {
+                                openURL(policyURL)
+                            } label: {
+                                Label("Read Privacy Policy", systemImage: "doc.text")
+                            }
+                            .secondaryStyle()
+                            .accessibilityIdentifier("dataPrivacy.readPolicy")
+                            .accessibilityHint("Opens the full privacy policy")
                         }
                     }
                 }
@@ -60,6 +75,7 @@ struct DataPrivacyView: View {
                                 showFirstConfirmation = true
                             }
                             .destructiveStyle()
+                            .accessibilityIdentifier("dataPrivacy.deleteAll")
                             .disabled(isDeleting)
                         }
                     }
@@ -70,6 +86,7 @@ struct DataPrivacyView: View {
             .padding(.bottom, PCTheme.Spacing.xl)
         }
         .background(Color.pcBackground)
+        .accessibilityIdentifier("screen.dataPrivacy")
         .navigationTitle("Data & Privacy")
         .alert("Delete all data?", isPresented: $showFirstConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -99,6 +116,39 @@ struct DataPrivacyView: View {
             Text(text)
                 .typography(.footnote, color: .pcTextSecondary)
         }
+    }
+
+    private var noTrackersBadge: some View {
+        HStack(spacing: PCTheme.Spacing.sm) {
+            Image(systemName: "lock.shield.fill")
+                .foregroundStyle(Color.pcAccent)
+                .voiceOverHidden()
+            Text("No Trackers")
+                .typography(.subheadline, color: .pcAccent)
+                .accessibilityLabel("No Trackers badge")
+        }
+        .padding(.horizontal, PCTheme.Spacing.sm)
+        .padding(.vertical, PCTheme.Spacing.xs)
+        .background(
+            Capsule()
+                .fill(Color.pcAccent.opacity(0.12))
+        )
+    }
+
+    private var appStoreLabelCard: some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+            Text(PrivacyManifesto.appStoreLabelTitle)
+                .typography(.footnote, color: .pcTextSecondary)
+            Text(PrivacyManifesto.appStoreLabelValue)
+                .typography(.subheadline, color: .pcTextPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(PCTheme.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                .fill(Color.pcMintTint)
+        )
+        .accessibilityElement(children: .combine)
     }
 
     private func performDelete() {

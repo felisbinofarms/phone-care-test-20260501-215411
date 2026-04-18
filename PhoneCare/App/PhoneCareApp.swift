@@ -18,6 +18,7 @@ struct PhoneCareApp: App {
                 .modelContainer(dataManager.modelContainer)
                 .preferredColorScheme(appState.resolvedColorScheme)
                 .task {
+                    guard !LaunchArguments.contains(LaunchArguments.skipStoreKitForUITests) else { return }
                     subscriptionManager.startTransactionListener()
                     await subscriptionManager.loadProducts()
                     await subscriptionManager.checkEntitlement()

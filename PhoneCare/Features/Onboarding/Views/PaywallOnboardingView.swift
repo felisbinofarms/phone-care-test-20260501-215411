@@ -9,6 +9,7 @@ struct PaywallOnboardingView: View {
     @Environment(\.openURL) private var openURL
     @State private var selectedProductID: String?
     @State private var isPurchasing = false
+    @State private var isLoadingProducts = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -44,19 +45,58 @@ struct PaywallOnboardingView: View {
                     .padding(.horizontal, PCTheme.Spacing.md)
 
                     // Plan options
-                    VStack(spacing: PCTheme.Spacing.sm) {
-                        ForEach(sortedProducts, id: \.id) { product in
-                            PlanOptionRow(
-                                product: product,
-                                periodLabel: subscriptionManager.periodLabel(for: product),
-                                isSelected: selectedProductID == product.id,
-                                isRecommended: isAnnual(product)
-                            ) {
-                                selectedProductID = product.id
+                    if isLoadingProducts {
+                        ProgressView("Loading plans…")
+                            .padding(.vertical, PCTheme.Spacing.lg)
+                    } else if sortedProducts.isEmpty {
+                        VStack(spacing: PCTheme.Spacing.md) {
+                            Text("We couldn't load subscription plans. Please check your internet connection and try again.")
+                                .typography(.subheadline, color: .pcTextSecondary)
+                                .multilineTextAlignment(.center)
+
+                            Button("Try Again") {
+                                Task { await loadProductsWithState() }
+                            }
+                            .textLinkStyle()
+                            .accessibleTapTarget()
+                        }
+                        .padding(.horizontal, PCTheme.Spacing.md)
+                        .padding(.vertical, PCTheme.Spacing.lg)
+                    } else {
+                        VStack(spacing: PCTheme.Spacing.sm) {
+                            ForEach(sortedProducts, id: \.id) { product in
+                                PlanOptionRow(
+                                    product: product,
+                                    periodLabel: subscriptionManager.periodLabel(for: product),
+                                    weeklyEquivalentLabel: product.weeklyEquivalentLabel,
+                                    isSelected: selectedProductID == product.id,
+                                    isRecommended: isAnnual(product)
+                                ) {
+                                    selectedProductID = product.id
+                                }
                             }
                         }
+                        .padding(.horizontal, PCTheme.Spacing.md)
                     }
+
+                    // Competitor comparison
+                    HStack(spacing: PCTheme.Spacing.sm) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Color.pcTextSecondary)
+                            .accessibilityHidden(true)
+                        Text(PaywallPricingContent.comparisonMessage(for: sortedProducts))
+                            .typography(.footnote, color: .pcTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                    }
+                    .padding(PCTheme.Spacing.sm)
+                    .background(
+                        RoundedRectangle(cornerRadius: PCTheme.Radius.sm)
+                            .fill(Color.pcSurface)
+                    )
                     .padding(.horizontal, PCTheme.Spacing.md)
+                    .accessibilityElement(children: .combine)
                 }
                 .padding(.horizontal, PCTheme.Spacing.md)
             }
@@ -104,7 +144,7 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Terms") {
-                        if let url = PhoneCareLegalLinks.termsOfUse {
+                        if let url = PrivacyManifesto.termsOfServiceURL {
                             openURL(url)
                         }
                     }
@@ -116,7 +156,7 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Privacy") {
-                        if let url = PhoneCareLegalLinks.privacyPolicy {
+                        if let url = PrivacyManifesto.privacyPolicyURL {
                             openURL(url)
                         }
                     }
@@ -129,12 +169,7 @@ struct PaywallOnboardingView: View {
             .padding(.bottom, PCTheme.Spacing.md)
         }
         .task {
-            if subscriptionManager.products.isEmpty {
-                await subscriptionManager.loadProducts()
-            }
-            // Pre-select annual plan
-            selectedProductID = sortedProducts.first(where: { isAnnual($0) })?.id
-                ?? sortedProducts.last?.id
+            await loadProductsWithState()
         }
         .alert("Something went wrong", isPresented: $showError) {
             Button("OK") { }
@@ -151,6 +186,17 @@ struct PaywallOnboardingView: View {
 
     private func isAnnual(_ product: Product) -> Bool {
         product.subscription?.subscriptionPeriod.unit == .year
+    }
+
+    private func loadProductsWithState() async {
+        isLoadingProducts = true
+        if subscriptionManager.products.isEmpty {
+            await subscriptionManager.loadProducts()
+        }
+        isLoadingProducts = false
+        // Pre-select annual plan
+        selectedProductID = sortedProducts.first(where: { isAnnual($0) })?.id
+            ?? sortedProducts.last?.id
     }
 
     private func handlePurchase() async {
@@ -200,6 +246,7 @@ private struct BenefitRow: View {
 private struct PlanOptionRow: View {
     let product: Product
     let periodLabel: String
+    let weeklyEquivalentLabel: String?
     let isSelected: Bool
     let isRecommended: Bool
     let onTap: () -> Void
@@ -230,8 +277,14 @@ private struct PlanOptionRow: View {
 
                 Spacer()
 
-                Text(product.displayPrice)
-                    .typography(.headline, color: .pcAccent)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(product.displayPrice)
+                        .typography(.headline, color: .pcAccent)
+                    if let weekly = weeklyEquivalentLabel {
+                        Text(weekly)
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+                }
             }
             .padding(PCTheme.Spacing.md)
             .background(
@@ -247,7 +300,13 @@ private struct PlanOptionRow: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(periodLabel) plan, \(product.displayPrice)")
+        .accessibilityLabel({
+            var label = "\(periodLabel) plan, \(product.displayPrice)"
+            if let weekly = weeklyEquivalentLabel {
+                label += ", \(weekly)"
+            }
+            return label
+        }())
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityHint(isRecommended ? "Best value" : "")
     }

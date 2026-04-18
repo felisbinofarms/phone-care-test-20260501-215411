@@ -1,10 +1,13 @@
 import SwiftUI
+import UIKit
 
 struct PhotosView: View {
     @Environment(DataManager.self) private var dataManager
     @Environment(SubscriptionManager.self) private var subscriptionManager
     @State private var viewModel = PhotosViewModel()
     @State private var showPaywall = false
+    @State private var showSharePrompt = false
+    @State private var sharePromptManager = SharePromptManager()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -19,6 +22,8 @@ struct PhotosView: View {
                     // Content
                     if viewModel.isScanning {
                         scanningState
+                    } else if viewModel.permissionDenied {
+                        permissionNeededState
                     } else if !viewModel.scanComplete {
                         scanPrompt
                     } else if viewModel.hasResults {
@@ -43,7 +48,23 @@ struct PhotosView: View {
                 UndoToastView(
                     itemCount: viewModel.lastDeletedCount,
                     onUndo: { viewModel.undoDelete() },
-                    onDismiss: { viewModel.showUndoToast = false }
+                    onDismiss: {
+                        viewModel.showUndoToast = false
+                        if sharePromptManager.shouldShowPrompt(dataManager: dataManager) {
+                            withAnimation { showSharePrompt = true }
+                            sharePromptManager.recordPromptShown(dataManager: dataManager)
+                        }
+                    }
+                )
+                .padding(.bottom, PCTheme.Spacing.xxl)
+            }
+
+            // Share prompt
+            if showSharePrompt {
+                SharePromptView(
+                    message: SharePromptManager.promptMessage(for: .photoDelete(bytesFreed: viewModel.lastDeletedSize)),
+                    shareText: SharePromptManager.shareMessage(for: .photoDelete(bytesFreed: viewModel.lastDeletedSize)),
+                    onDismiss: { withAnimation { showSharePrompt = false } }
                 )
                 .padding(.bottom, PCTheme.Spacing.xxl)
             }
@@ -131,14 +152,8 @@ struct PhotosView: View {
         switch viewModel.selectedCategory {
         case .duplicates:
             duplicatesContent
-        case .similar:
-            similarContent
         case .screenshots:
-            PhotoGridView(
-                photoIDs: viewModel.screenshotIDs,
-                selectedIDs: viewModel.selectedPhotoIDs,
-                onToggle: { viewModel.toggleSelection($0) }
-            )
+            screenshotsByAgeContent
         case .blurry:
             PhotoGridView(
                 photoIDs: viewModel.blurryIDs,
@@ -151,6 +166,42 @@ struct PhotosView: View {
                 selectedIDs: viewModel.selectedPhotoIDs,
                 onToggle: { viewModel.toggleSelection($0) }
             )
+        }
+    }
+
+    private var screenshotsByAgeContent: some View {
+        let ageGroups = viewModel.screenshotsByAge()
+        return VStack(spacing: PCTheme.Spacing.md) {
+            if ageGroups.isEmpty {
+                PhotoGridView(
+                    photoIDs: viewModel.screenshotIDs,
+                    selectedIDs: viewModel.selectedPhotoIDs,
+                    onToggle: { viewModel.toggleSelection($0) }
+                )
+            } else {
+                ForEach(ageGroups) { group in
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+                        HStack {
+                            Text("\(group.title) (\(group.ids.count))")
+                                .typography(.headline)
+
+                            Spacer()
+
+                            Button("Select All") {
+                                viewModel.selectAllInAgeGroup(group)
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Color.pcAccent)
+                        }
+
+                        PhotoGridView(
+                            photoIDs: group.ids,
+                            selectedIDs: viewModel.selectedPhotoIDs,
+                            onToggle: { viewModel.toggleSelection($0) }
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -173,29 +224,6 @@ struct PhotosView: View {
 
             premiumGateMessage(
                 totalCount: viewModel.duplicateGroups.count,
-                shownCount: groups.count
-            )
-        }
-    }
-
-    private var similarContent: some View {
-        let groups = viewModel.visibleSimilarGroups(isPremium: subscriptionManager.isPremium)
-        return VStack(spacing: PCTheme.Spacing.md) {
-            ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
-                DuplicateGroupView(
-                    group: group,
-                    groupIndex: index,
-                    selectedIDs: viewModel.selectedPhotoIDs,
-                    onToggle: { viewModel.toggleSelection($0) },
-                    onKeepBest: {
-                        let rest = Array(group.dropFirst())
-                        viewModel.selectAll(in: rest)
-                    }
-                )
-            }
-
-            premiumGateMessage(
-                totalCount: viewModel.similarGroups.count,
                 shownCount: groups.count
             )
         }
@@ -240,13 +268,13 @@ struct PhotosView: View {
                     .typography(.headline)
                     .multilineTextAlignment(.center)
 
-                Text("We will look for duplicates, similar photos, screenshots, and blurry images.")
+                Text("We will look for duplicates, screenshots, blurry photos, and large videos.")
                     .typography(.subheadline, color: .pcTextSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button("Scan Photos") {
-                    viewModel.startScan()
+                    viewModel.startScan(dataManager: dataManager)
                 }
                 .primaryCTAStyle()
             }
@@ -258,13 +286,16 @@ struct PhotosView: View {
     private var scanningState: some View {
         CardView {
             VStack(spacing: PCTheme.Spacing.lg) {
-                ProgressView()
-                    .controlSize(.large)
+                ProgressView(value: viewModel.scanProgress)
+                    .progressViewStyle(.linear)
+                    .tint(Color.pcAccent)
 
-                Text("Scanning your photos...")
+                Text(viewModel.scanStatusMessage.isEmpty
+                     ? "Scanning your photos..."
+                     : viewModel.scanStatusMessage)
                     .typography(.headline)
 
-                Text("This may take a moment.")
+                Text("This may take a moment depending on your library size.")
                     .typography(.subheadline, color: .pcTextSecondary)
             }
             .frame(maxWidth: .infinity)
@@ -286,6 +317,34 @@ struct PhotosView: View {
                 Text("No \(viewModel.selectedCategory.rawValue.lowercased()) found. Your photo library is tidy.")
                     .typography(.subheadline, color: .pcTextSecondary)
                     .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, PCTheme.Spacing.lg)
+        }
+    }
+
+    private var permissionNeededState: some View {
+        CardView {
+            VStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: "photo.badge.exclamationmark")
+                    .font(.system(size: 48))
+                    .foregroundStyle(Color.pcTextSecondary)
+                    .voiceOverHidden()
+
+                Text("Photos access needed")
+                    .typography(.headline)
+
+                Text("To find duplicates and free up space, PhoneCare needs access to your photo library. You can grant access in Settings.")
+                    .typography(.subheadline, color: .pcTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .primaryCTAStyle()
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, PCTheme.Spacing.lg)

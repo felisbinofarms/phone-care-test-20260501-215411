@@ -305,3 +305,39 @@ struct ScanResultTests {
         #expect(scan.healthScore == 72)
     }
 }
+
+// MARK: - Privacy Manifesto Tests
+
+@Suite("PrivacyManifesto")
+struct PrivacyManifestoTests {
+
+    @Test("Section title and summary are user-friendly")
+    func sectionHeaderCopy() {
+        #expect(PrivacyManifesto.sectionTitle == "Your Privacy")
+        #expect(!PrivacyManifesto.summaryText.isEmpty)
+    }
+
+    @Test("No-collection list covers required trust claims")
+    func requiredNoCollectionClaimsExist() {
+        let joined = PrivacyManifesto.noCollectionPoints.joined(separator: " ").lowercased()
+        #expect(joined.contains("photos"))
+        #expect(joined.contains("contacts"))
+        #expect(joined.contains("profiling"))
+        #expect(joined.contains("advertising"))
+        #expect(joined.contains("analytics"))
+    }
+
+    @Test("App Store privacy label summary is data not collected")
+    func appStoreLabelSummary() {
+        #expect(PrivacyManifesto.appStoreLabelTitle == "App Store Privacy Label")
+        #expect(PrivacyManifesto.appStoreLabelValue == "Data Not Collected")
+    }
+
+    @Test("Privacy policy URL is valid HTTPS and points to legal docs")
+    func privacyPolicyURLIsValid() {
+        let url = PrivacyManifesto.privacyPolicyURL
+        #expect(url != nil)
+        #expect(url?.scheme == "https")
+        #expect(url?.absoluteString.contains("privacy-policy") == true)
+    }
+}
