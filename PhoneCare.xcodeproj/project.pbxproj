@@ -14,6 +14,7 @@
 		06AF7BD87278BBFD56900800 /* DuplicateGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBD4AAC2059ACDC726FAF868 /* DuplicateGroupView.swift */; };
 		079A3F12CA18936375A736BB /* CleanupUndoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F64986D7C2C9E02438A4A56A /* CleanupUndoManager.swift */; };
 		08FA614F13B8A84B5C2A7DEC /* ButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C372BD5D775C02FF0730556D /* ButtonStyles.swift */; };
+		1AA40054A1B2C3D4E5F60708 /* InfoTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB40054A1B2C3D4E5F60708 /* InfoTooltip.swift */; };
 		101D61F7975BBF70B9120B2B /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B27020363DD7C9E298057C /* DashboardView.swift */; };
 		16548E02AB8E20278F2D05C4 /* StorageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22130DF426022CBA9619EA33 /* StorageViewModel.swift */; };
 		16CF95FCBC12F342D90A58C4 /* FreeUpSpaceFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C788FBF566163E8CE85FB11 /* FreeUpSpaceFlow.swift */; };
@@ -218,6 +219,7 @@
 		BF26E47A9EE9FB0DA6E70A5A /* ViewModifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModifiers.swift; sourceTree = "<group>"; };
 		C1ACE331E36177B4D8D8316A /* QuickWinsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickWinsSection.swift; sourceTree = "<group>"; };
 		C293CF78D84B6DB269200241 /* WelcomeHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeHomeView.swift; sourceTree = "<group>"; };
+		1BB40054A1B2C3D4E5F60708 /* InfoTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoTooltip.swift; sourceTree = "<group>"; };
 		C372BD5D775C02FF0730556D /* ButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonStyles.swift; sourceTree = "<group>"; };
 		C628B18D21474CF69B6364AF /* ScanDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDetail.swift; sourceTree = "<group>"; };
 		C9AD06B404CDDD0B5F94AB3D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -407,6 +409,7 @@
 			children = (
 				C372BD5D775C02FF0730556D /* ButtonStyles.swift */,
 				E20FA7F83762C51B4B146FD2 /* CardView.swift */,
+				1BB40054A1B2C3D4E5F60708 /* InfoTooltip.swift */,
 				305392EFA1A3EDAFC2F27C37 /* Theme.swift */,
 				E8CBDF879AD9ED7C788D8AA6 /* Typography.swift */,
 				BF26E47A9EE9FB0DA6E70A5A /* ViewModifiers.swift */,
@@ -749,6 +752,7 @@
 				BB86737F5E58F1CCC43343ED /* BatteryViewModel.swift in Sources */,
 				08FA614F13B8A84B5C2A7DEC /* ButtonStyles.swift in Sources */,
 				86F71929C4554EDB0C98CB45 /* CardView.swift in Sources */,
+				1AA40054A1B2C3D4E5F60708 /* InfoTooltip.swift in Sources */,
 				FE6AEB79C4DBF4B02067CC04 /* CategoryDrillDownView.swift in Sources */,
 				9EB295854EECECF9E02853A6 /* CleanContactsFlow.swift in Sources */,
 				B3204490D20B9308D4B2A578 /* CleanPhotosFlow.swift in Sources */,
