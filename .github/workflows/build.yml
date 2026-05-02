@@ -50,7 +50,7 @@ jobs:
             exit 0
           fi
 
-          PROJECT_SWIFT_FILES=$(grep -oE '[A-Za-z0-9_]+\.swift' PhoneCare.xcodeproj/project.pbxproj | sort -u)
+          PROJECT_SWIFT_FILES=$(grep -oE '[A-Za-z0-9_+]+\.swift' PhoneCare.xcodeproj/project.pbxproj | sort -u)
 
           MISSING=0
           while IFS= read -r file; do
