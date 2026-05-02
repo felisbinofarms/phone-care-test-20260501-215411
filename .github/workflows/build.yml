@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Verify Swift files are in Xcode project
         run: |
@@ -39,7 +41,8 @@ jobs:
             BEFORE_SHA="${{ github.event.before }}"
             AFTER_SHA="${{ github.sha }}"
             if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
-              CHANGED_SWIFT_FILES=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" -- 'PhoneCare/**/*.swift' | sort)
+              CHANGED_SWIFT_FILES=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" -- 'PhoneCare/**/*.swift' | sort) || \
+                CHANGED_SWIFT_FILES=$(find PhoneCare -name "*.swift" -type f | sort)
             else
               CHANGED_SWIFT_FILES=$(find PhoneCare -name "*.swift" -type f | sort)
             fi
