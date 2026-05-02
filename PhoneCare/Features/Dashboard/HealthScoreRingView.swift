@@ -43,6 +43,8 @@ struct HealthScoreRingView: View {
                     .font(.system(size: size * 0.28, weight: .bold, design: .rounded))
                     .foregroundStyle(ringColor)
                     .contentTransition(.numericText())
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
 
                 Text("Health Score")
                     .typography(.caption, color: .pcTextSecondary)

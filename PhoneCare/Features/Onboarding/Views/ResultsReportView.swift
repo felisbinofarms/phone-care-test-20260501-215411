@@ -22,7 +22,7 @@ struct ResultsReportView: View {
             // Health score
             VStack(spacing: PCTheme.Spacing.xs) {
                 Text("\(viewModel.scanResults.healthScore)")
-                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .healthScoreColor(viewModel.scanResults.healthScore)
 
                 Text("Health Score")

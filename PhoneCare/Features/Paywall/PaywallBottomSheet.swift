@@ -276,13 +276,17 @@ struct PaywallBottomSheet: View {
 
             HStack(spacing: PCTheme.Spacing.md) {
                 Button("Terms of Use") {
-                    // Open terms URL
+                        if let url = PrivacyManifesto.termsOfServiceURL {
+                            UIApplication.shared.open(url)
+                        }
                 }
                 .textLinkStyle()
                 .font(.caption)
 
                 Button("Privacy Policy") {
-                    // Open privacy URL
+                        if let url = PrivacyManifesto.privacyPolicyURL {
+                            UIApplication.shared.open(url)
+                        }
                 }
                 .textLinkStyle()
                 .font(.caption)

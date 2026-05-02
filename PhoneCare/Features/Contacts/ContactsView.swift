@@ -8,6 +8,7 @@ struct ContactsView: View {
     @State private var showPaywall = false
     @State private var showSharePrompt = false
     @State private var sharePromptManager = SharePromptManager()
+        @State private var showMergeAllConfirmation = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -79,6 +80,18 @@ struct ContactsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+            .confirmationDialog(
+                "Merge all \(viewModel.duplicateGroups.count) groups?",
+                isPresented: $showMergeAllConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Merge All Duplicates", role: .destructive) {
+                    viewModel.mergeAll(dataManager: dataManager)
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will merge \(viewModel.duplicateCount) contacts into \(viewModel.duplicateGroups.count) combined entries. You can undo for 30 seconds after merging.")
+            }
     }
 
     // MARK: - Summary
@@ -117,7 +130,7 @@ struct ContactsView: View {
                             showPaywall = true
                             return
                         }
-                        viewModel.mergeAll(dataManager: dataManager)
+                            showMergeAllConfirmation = true
                     }
                     .secondaryStyle()
                     .disabled(viewModel.isMerging)

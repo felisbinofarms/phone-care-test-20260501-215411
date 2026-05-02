@@ -7,6 +7,7 @@ struct MergeComparisonView: View {
 
     @State private var fields: [ContactField]
     @Environment(\.dismiss) private var dismiss
+        @State private var showMergeConfirmation = false
 
     init(group: DuplicateContactGroup, onMerge: (() -> Void)? = nil, onCancel: (() -> Void)? = nil) {
         self.group = group
@@ -27,8 +28,7 @@ struct MergeComparisonView: View {
 
                     // Merge button
                     Button("Merge Contacts") {
-                        onMerge?()
-                        dismiss()
+                            showMergeConfirmation = true
                     }
                     .primaryCTAStyle()
                     .padding(.top, PCTheme.Spacing.md)
@@ -49,6 +49,19 @@ struct MergeComparisonView: View {
                     .accessibleTapTarget()
                 }
             }
+            }
+            .confirmationDialog(
+                "Merge \(group.contactIDs.count) contacts into one?",
+                isPresented: $showMergeConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Merge Contacts", role: .destructive) {
+                    onMerge?()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will combine \(group.contactIDs.count) entries into a single contact. You can undo this for 30 seconds after merging.")
         }
     }
 

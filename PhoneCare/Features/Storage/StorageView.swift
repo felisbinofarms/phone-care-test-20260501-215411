@@ -101,7 +101,7 @@ struct StorageView: View {
         if viewModel.usedPercentage >= 90 {
             return .pcWarning
         } else if viewModel.usedPercentage >= 75 {
-            return .blue
+                return .pcPrimary
         } else {
             return .pcAccent
         }

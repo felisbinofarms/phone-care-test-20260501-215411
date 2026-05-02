@@ -143,7 +143,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Terms") {
-                        // Open terms URL
+                        if let url = PrivacyManifesto.termsOfServiceURL {
+                            UIApplication.shared.open(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
@@ -153,7 +155,9 @@ struct PaywallOnboardingView: View {
                         .foregroundStyle(Color.pcBorder)
 
                     Button("Privacy") {
-                        // Open privacy URL
+                        if let url = PrivacyManifesto.privacyPolicyURL {
+                            UIApplication.shared.open(url)
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(Color.pcTextSecondary)
