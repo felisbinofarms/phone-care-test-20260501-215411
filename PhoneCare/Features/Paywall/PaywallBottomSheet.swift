@@ -3,6 +3,7 @@ import SwiftUI
 struct PaywallBottomSheet: View {
     @Environment(SubscriptionManager.self) private var subscriptionManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @State private var viewModel = PaywallViewModel()
 
     var contextualBenefit: String?

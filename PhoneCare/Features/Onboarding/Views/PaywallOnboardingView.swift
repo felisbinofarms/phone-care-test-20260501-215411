@@ -6,6 +6,7 @@ struct PaywallOnboardingView: View {
     let onContinue: () -> Void
     let onSkip: () -> Void
 
+    @Environment(\.openURL) private var openURL
     @State private var selectedProductID: String?
     @State private var isPurchasing = false
     @State private var isLoadingProducts = false
