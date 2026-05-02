@@ -108,7 +108,8 @@ struct AppStorageWithScreenTimeView: View {
                     .background(Color.pcAccent)
                     .foregroundStyle(.white)
                     .cornerRadius(PCTheme.Radius.md)
-                    .typography(.footnote, weight: .semibold)
+                    .typography(.footnote)
+                    .fontWeight(.semibold)
                 }
                 .accessibleTapTarget()
             }
@@ -199,7 +200,8 @@ struct AppStorageWithScreenTimeView: View {
                     Spacer()
 
                     Text(formatBytes(detail.sizeInBytes))
-                        .typography(.footnote, color: .pcAccent, weight: .semibold)
+                        .typography(.footnote, color: .pcAccent)
+                        .fontWeight(.semibold)
                 }
 
                 if let usageMinutes = appUsageData[detail.detailType], usageMinutes > 0 {
@@ -215,7 +217,7 @@ struct AppStorageWithScreenTimeView: View {
 
                         if usageMinutes > 60 {
                             Text("High usage")
-                                .typography(.caption2)
+                                .typography(.caption)
                                 .padding(.horizontal, PCTheme.Spacing.xs)
                                 .padding(.vertical, 2)
                                 .background(Color.pcAccent.opacity(0.2))
@@ -251,7 +253,7 @@ struct AppStorageWithScreenTimeView: View {
                 .foregroundStyle(Color.pcAccent)
 
             Text(recommendation)
-                .typography(.caption2, color: .pcTextSecondary)
+                .typography(.caption, color: .pcTextSecondary)
         }
         .padding(.top, PCTheme.Spacing.xs)
     }
