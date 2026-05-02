@@ -3,6 +3,38 @@ import Photos
 import UIKit
 import OSLog
 
+// MARK: - Group Reason
+
+/// Explains why photos were placed in the same group.
+enum GroupReason: String, Sendable, Codable {
+    /// Identical copies: same creation timestamp and pixel dimensions.
+    case exactDuplicate
+    /// Captured in a burst sequence (shared PHAsset burst identifier).
+    case burstSequence
+    /// Visually similar shots detected via perceptual hashing.
+    case similarShots
+    /// Loaded from a previous scan — exact reason not available.
+    case loadedFromCache
+
+    var displayText: String {
+        switch self {
+        case .exactDuplicate:  return "These are identical copies of the same photo."
+        case .burstSequence:   return "These were captured in rapid sequence (burst mode)."
+        case .similarShots:    return "These photos look very similar."
+        case .loadedFromCache: return "Similar photos from your previous scan."
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .exactDuplicate:  return "doc.on.doc"
+        case .burstSequence:   return "burst"
+        case .similarShots:    return "photo.on.rectangle.angled"
+        case .loadedFromCache: return "clock.arrow.circlepath"
+        }
+    }
+}
+
 // MARK: - Duplicate Group
 
 struct DuplicateGroup: Sendable, Identifiable {
@@ -10,6 +42,26 @@ struct DuplicateGroup: Sendable, Identifiable {
     let assetIdentifiers: [String]
     let suggestedKeepIdentifier: String
     let estimatedSavingsBytes: Int64
+    /// Why these photos were grouped together.
+    let groupReason: GroupReason
+    /// Human-readable explanation of why this photo is the suggested keep.
+    let keepReason: String
+
+    init(
+        id: String,
+        assetIdentifiers: [String],
+        suggestedKeepIdentifier: String,
+        estimatedSavingsBytes: Int64,
+        groupReason: GroupReason = .loadedFromCache,
+        keepReason: String = "Highest quality photo selected to keep."
+    ) {
+        self.id = id
+        self.assetIdentifiers = assetIdentifiers
+        self.suggestedKeepIdentifier = suggestedKeepIdentifier
+        self.estimatedSavingsBytes = estimatedSavingsBytes
+        self.groupReason = groupReason
+        self.keepReason = keepReason
+    }
 
     var count: Int { assetIdentifiers.count }
 
@@ -18,14 +70,44 @@ struct DuplicateGroup: Sendable, Identifiable {
     }
 }
 
+// MARK: - Large Video Info
+
+/// Metadata for a video flagged as large, enriched for space-first ranking.
+struct LargeVideoInfo: Sendable, Identifiable {
+    let id: String           // asset local identifier
+    let estimatedBytes: Int64
+    let durationSeconds: Double
+    let creationDate: Date?
+    let isScreenRecording: Bool
+}
+
 // MARK: - Photo Analysis Result
 
 struct PhotoAnalysisResult: Sendable {
     let totalPhotos: Int
     let duplicateGroups: [DuplicateGroup]
     let screenshotIdentifiers: [String]
+    /// Large video asset identifiers (kept for cache compatibility).
     let largeVideoIdentifiers: [String]
+    /// Large video infos sorted by estimated file size descending (biggest wins first).
+    let largeVideoInfos: [LargeVideoInfo]
     let blurryIdentifiers: [String]
+
+    init(
+        totalPhotos: Int,
+        duplicateGroups: [DuplicateGroup],
+        screenshotIdentifiers: [String],
+        largeVideoIdentifiers: [String],
+        largeVideoInfos: [LargeVideoInfo] = [],
+        blurryIdentifiers: [String]
+    ) {
+        self.totalPhotos = totalPhotos
+        self.duplicateGroups = duplicateGroups
+        self.screenshotIdentifiers = screenshotIdentifiers
+        self.largeVideoIdentifiers = largeVideoIdentifiers
+        self.largeVideoInfos = largeVideoInfos
+        self.blurryIdentifiers = blurryIdentifiers
+    }
 
     var duplicateCount: Int {
         duplicateGroups.reduce(0) { $0 + $1.count - 1 }
@@ -58,9 +140,6 @@ final class PhotoAnalyzer {
     /// Minimum video file size to flag as "large" (50 MB)
     private let largeVideoThreshold: Int64 = 50 * 1024 * 1024
 
-    /// Time proximity for duplicate detection (within 2 seconds)
-    private let duplicateDateProximity: TimeInterval = 2.0
-
     // MARK: - Private
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "PhoneCare", category: "PhotoAnalyzer")
@@ -91,14 +170,10 @@ final class PhotoAnalyzer {
         }
 
         // Run heavy work off the main actor
-        let analysisResult = await Task.detached { [largeVideoThreshold, duplicateDateProximity] in
-            await Self.performAnalysis(
-                largeVideoThreshold: largeVideoThreshold,
-                duplicateDateProximity: duplicateDateProximity
-            )
+        let analysisResult = await Task.detached { [largeVideoThreshold] in
+            await Self.performAnalysis(largeVideoThreshold: largeVideoThreshold)
         }.value
 
-        // Update progress on main actor through the stages
         progress = 1.0
         statusMessage = "Photo scan complete"
         result = analysisResult
@@ -143,12 +218,12 @@ final class PhotoAnalyzer {
     // MARK: - Static Analysis (runs off main actor)
 
     private static func performAnalysis(
-        largeVideoThreshold: Int64,
-        duplicateDateProximity: TimeInterval
+        largeVideoThreshold: Int64
     ) async -> PhotoAnalysisResult {
         let fetchOptions = PHFetchOptions()
         fetchOptions.includeHiddenAssets = false
-        fetchOptions.includeAllBurstAssets = false
+        // Include all burst frames so we can detect burst sequences
+        fetchOptions.includeAllBurstAssets = true
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
 
         let allAssets = PHAsset.fetchAssets(with: fetchOptions)
@@ -164,7 +239,7 @@ final class PhotoAnalyzer {
             )
         }
 
-        // Collect asset metadata for grouping
+        // Collect asset metadata
         struct AssetInfo: Sendable {
             let identifier: String
             let creationDate: Date?
@@ -173,6 +248,10 @@ final class PhotoAnalyzer {
             let pixelWidth: Int
             let pixelHeight: Int
             let estimatedFileSize: Int64
+            let burstIdentifier: String?
+            let burstSelectionTypes: PHAssetBurstSelectionType
+            let duration: Double
+            let isScreenRecording: Bool
         }
 
         var assetInfos: [AssetInfo] = []
@@ -181,21 +260,26 @@ final class PhotoAnalyzer {
         for i in 0..<totalCount {
             let asset = allAssets.object(at: i)
 
-            // Estimate file size from resources
             var estimatedSize: Int64 = 0
             let resources = PHAssetResource.assetResources(for: asset)
+            var isScreenRecording = false
             for resource in resources {
                 if let size = resource.value(forKey: "fileSize") as? Int64 {
                     estimatedSize += size
                 }
-            }
 
-            // Fallback estimate if no resource size available
+                // PHAssetMediaSubtype has no stable screen-recording case across SDKs.
+                // Use filename hints produced by iOS screen recordings as a fallback.
+                let filename = resource.originalFilename.lowercased()
+                if filename.contains("rp_replay") || filename.contains("screen recording") {
+                    isScreenRecording = true
+                }
+            }
             if estimatedSize == 0 {
                 let pixelCount = Int64(asset.pixelWidth * asset.pixelHeight)
                 estimatedSize = asset.mediaType == .video
-                    ? pixelCount * 4  // rough video estimate
-                    : pixelCount * 3  // rough photo estimate (RGB bytes)
+                    ? max(Int64(asset.duration * 8_000_000), pixelCount * 4)
+                    : pixelCount * 3
             }
 
             assetInfos.append(AssetInfo(
@@ -205,21 +289,35 @@ final class PhotoAnalyzer {
                 mediaSubtypes: asset.mediaSubtypes,
                 pixelWidth: asset.pixelWidth,
                 pixelHeight: asset.pixelHeight,
-                estimatedFileSize: estimatedSize
+                estimatedFileSize: estimatedSize,
+                burstIdentifier: asset.burstIdentifier,
+                burstSelectionTypes: asset.burstSelectionTypes,
+                duration: asset.duration,
+                isScreenRecording: isScreenRecording
             ))
         }
 
-        // 1. Screenshots
+        // ── 1. Screenshots ──────────────────────────────────────────────────────
         let screenshots = assetInfos.filter { $0.mediaSubtypes.contains(.photoScreenshot) }
         let screenshotIDs = screenshots.map(\.identifier)
 
-        // 2. Large videos
-        let largeVideos = assetInfos.filter {
+        // ── 2. Large videos (sorted biggest-first for space-first UX) ───────────
+        let largeVideoAssets = assetInfos.filter {
             $0.mediaType == .video && $0.estimatedFileSize > largeVideoThreshold
-        }
-        let largeVideoIDs = largeVideos.map(\.identifier)
+        }.sorted { $0.estimatedFileSize > $1.estimatedFileSize }
 
-        // 3. Blurry detection (simplified: small pixel dimensions for photos)
+        let largeVideoIDs = largeVideoAssets.map(\.identifier)
+        let largeVideoInfos = largeVideoAssets.map { v in
+            LargeVideoInfo(
+                id: v.identifier,
+                estimatedBytes: v.estimatedFileSize,
+                durationSeconds: v.duration,
+                creationDate: v.creationDate,
+                isScreenRecording: v.isScreenRecording
+            )
+        }
+
+        // ── 3. Blurry detection (low pixel count) ───────────────────────────────
         let blurryThresholdPixels = 500 * 500
         let blurryPhotos = assetInfos.filter {
             $0.mediaType == .image
@@ -229,69 +327,173 @@ final class PhotoAnalyzer {
         }
         let blurryIDs = blurryPhotos.map(\.identifier)
 
-        // 4. Duplicate detection: group by similar file size + creation date proximity
-        let photos = assetInfos.filter { $0.mediaType == .image && !$0.mediaSubtypes.contains(.photoScreenshot) }
+        // ── 4. Duplicate / similar photo grouping ───────────────────────────────
+        // Work on non-screenshot, non-blurry photos only
+        let blurrySet = Set(blurryIDs)
+        let screenshotSet = Set(screenshotIDs)
+        let photos = assetInfos.filter {
+            $0.mediaType == .image
+            && !screenshotSet.contains($0.identifier)
+            && !blurrySet.contains($0.identifier)
+        }
 
         var duplicateGroups: [DuplicateGroup] = []
         var processedIdentifiers: Set<String> = []
 
-        // Group by approximate file size (within 5% tolerance)
-        let sizeTolerance: Double = 0.05
+        // — 4a. Burst sequences ——————————————————————————————————————————————————
+        var burstBuckets: [String: [AssetInfo]] = [:]
+        for photo in photos {
+            guard let burst = photo.burstIdentifier else { continue }
+            burstBuckets[burst, default: []].append(photo)
+        }
+        for (_, members) in burstBuckets where members.count >= 2 {
+            // Prefer user-picked best shot; fall back to auto-pick, then highest res
+            let best = members.first(where: { $0.burstSelectionTypes.contains(.userPick) })
+                ?? members.first(where: { $0.burstSelectionTypes.contains(.autoPick) })
+                ?? members.max(by: { ($0.pixelWidth * $0.pixelHeight) < ($1.pixelWidth * $1.pixelHeight) })
+                ?? members[0]
 
-        for i in 0..<photos.count {
-            let photo = photos[i]
-            guard !processedIdentifiers.contains(photo.identifier) else { continue }
-            guard photo.estimatedFileSize > 0 else { continue }
+            let savings = members
+                .filter { $0.identifier != best.identifier }
+                .reduce(Int64(0)) { $0 + $1.estimatedFileSize }
 
-            var group: [AssetInfo] = [photo]
+            let keepReason: String
+            if best.burstSelectionTypes.contains(.userPick) {
+                keepReason = "You previously selected this as the best shot in the burst."
+            } else {
+                keepReason = "This frame has the best estimated quality in the burst sequence."
+            }
 
-            for j in (i + 1)..<photos.count {
-                let candidate = photos[j]
-                guard !processedIdentifiers.contains(candidate.identifier) else { continue }
-                guard candidate.estimatedFileSize > 0 else { continue }
+            duplicateGroups.append(DuplicateGroup(
+                id: UUID().uuidString,
+                assetIdentifiers: members.map(\.identifier),
+                suggestedKeepIdentifier: best.identifier,
+                estimatedSavingsBytes: savings,
+                groupReason: .burstSequence,
+                keepReason: keepReason
+            ))
+            members.forEach { processedIdentifiers.insert($0.identifier) }
+        }
 
-                // Check file size similarity
-                let sizeDiff = abs(Double(photo.estimatedFileSize) - Double(candidate.estimatedFileSize))
-                let maxSize = Double(max(photo.estimatedFileSize, candidate.estimatedFileSize))
-                guard maxSize > 0 && (sizeDiff / maxSize) <= sizeTolerance else { continue }
+        // — 4b. Exact duplicates (same creation time ± 0.5s + same dimensions) ——
+        let exactWindow: TimeInterval = 0.5
+        let remaining1 = photos.filter { !processedIdentifiers.contains($0.identifier) }
+        let sortedByDate = remaining1.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
 
-                // Check creation date proximity
-                if let date1 = photo.creationDate, let date2 = candidate.creationDate {
-                    let timeDiff = abs(date1.timeIntervalSince(date2))
-                    guard timeDiff <= duplicateDateProximity else { continue }
-                } else {
-                    // If either lacks a date, skip
-                    continue
+        var i = 0
+        while i < sortedByDate.count {
+            let anchor = sortedByDate[i]
+            guard !processedIdentifiers.contains(anchor.identifier),
+                  let anchorDate = anchor.creationDate else {
+                i += 1
+                continue
+            }
+
+            var group: [AssetInfo] = [anchor]
+            var j = i + 1
+            while j < sortedByDate.count {
+                let candidate = sortedByDate[j]
+                guard let candidateDate = candidate.creationDate,
+                      abs(candidateDate.timeIntervalSince(anchorDate)) <= exactWindow else { break }
+                if !processedIdentifiers.contains(candidate.identifier)
+                    && candidate.pixelWidth == anchor.pixelWidth
+                    && candidate.pixelHeight == anchor.pixelHeight {
+                    group.append(candidate)
                 }
-
-                // Check same dimensions
-                guard photo.pixelWidth == candidate.pixelWidth
-                   && photo.pixelHeight == candidate.pixelHeight else { continue }
-
-                group.append(candidate)
+                j += 1
             }
 
             if group.count >= 2 {
-                // Suggest keeping the one with highest pixel count (or first if tied)
-                let best = group.max(by: {
-                    ($0.pixelWidth * $0.pixelHeight) < ($1.pixelWidth * $1.pixelHeight)
-                }) ?? group[0]
-
+                let best = group.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? group[0]
                 let savings = group
                     .filter { $0.identifier != best.identifier }
                     .reduce(Int64(0)) { $0 + $1.estimatedFileSize }
 
-                let dupGroup = DuplicateGroup(
+                duplicateGroups.append(DuplicateGroup(
                     id: UUID().uuidString,
                     assetIdentifiers: group.map(\.identifier),
                     suggestedKeepIdentifier: best.identifier,
-                    estimatedSavingsBytes: savings
-                )
-                duplicateGroups.append(dupGroup)
+                    estimatedSavingsBytes: savings,
+                    groupReason: .exactDuplicate,
+                    keepReason: "This copy has the largest file size, indicating it may be higher quality."
+                ))
+                group.forEach { processedIdentifiers.insert($0.identifier) }
+            }
+            i += 1
+        }
 
-                for info in group {
-                    processedIdentifiers.insert(info.identifier)
+        // — 4c. Similar shots via 8×8 perceptual hash ————————————————————————————
+        let remaining2 = photos.filter { !processedIdentifiers.contains($0.identifier) }
+        let sortedForPHash = remaining2.sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+
+        let phashBucketWindow: TimeInterval = 60.0
+        var phashBuckets: [[AssetInfo]] = []
+        var currentBucket: [AssetInfo] = []
+        var bucketAnchorDate: Date?
+
+        for photo in sortedForPHash {
+            guard let date = photo.creationDate else { continue }
+            if let anchor = bucketAnchorDate, date.timeIntervalSince(anchor) <= phashBucketWindow {
+                currentBucket.append(photo)
+            } else {
+                if currentBucket.count >= 2 { phashBuckets.append(currentBucket) }
+                currentBucket = [photo]
+                bucketAnchorDate = date
+            }
+        }
+        if currentBucket.count >= 2 { phashBuckets.append(currentBucket) }
+
+        for bucket in phashBuckets {
+            // Compute hashes for all photos in this time window
+            var hashPairs: [(info: AssetInfo, hash: UInt64)] = []
+            for info in bucket {
+                if let h = await computePerceptualHash(identifier: info.identifier) {
+                    hashPairs.append((info, h))
                 }
+            }
+            guard hashPairs.count >= 2 else { continue }
+
+            // Union-Find to cluster similar photos
+            let count = hashPairs.count
+            var parent = Array(0..<count)
+
+            func findRoot(_ idx: Int) -> Int {
+                var idx = idx
+                while parent[idx] != idx { idx = parent[idx] }
+                return idx
+            }
+
+            for a in 0..<count {
+                for b in (a + 1)..<count {
+                    if hammingDistance(hashPairs[a].hash, hashPairs[b].hash) <= 12 {
+                        let ra = findRoot(a), rb = findRoot(b)
+                        if ra != rb { parent[ra] = rb }
+                    }
+                }
+            }
+
+            var components: [Int: [AssetInfo]] = [:]
+            for idx in 0..<count {
+                let root = findRoot(idx)
+                components[root, default: []].append(hashPairs[idx].info)
+            }
+
+            for (_, members) in components where members.count >= 2 {
+                guard members.allSatisfy({ !processedIdentifiers.contains($0.identifier) }) else { continue }
+                let best = members.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? members[0]
+                let savings = members
+                    .filter { $0.identifier != best.identifier }
+                    .reduce(Int64(0)) { $0 + $1.estimatedFileSize }
+
+                duplicateGroups.append(DuplicateGroup(
+                    id: UUID().uuidString,
+                    assetIdentifiers: members.map(\.identifier),
+                    suggestedKeepIdentifier: best.identifier,
+                    estimatedSavingsBytes: savings,
+                    groupReason: .similarShots,
+                    keepReason: "This photo has the largest file size in the group, suggesting it captures the most detail."
+                ))
+                members.forEach { processedIdentifiers.insert($0.identifier) }
             }
         }
 
@@ -300,7 +502,62 @@ final class PhotoAnalyzer {
             duplicateGroups: duplicateGroups,
             screenshotIdentifiers: screenshotIDs,
             largeVideoIdentifiers: largeVideoIDs,
+            largeVideoInfos: largeVideoInfos,
             blurryIdentifiers: blurryIDs
         )
+    }
+
+    // MARK: - Perceptual Hash Helpers
+
+    /// Requests an 8×8 thumbnail and computes an average-hash (aHash) for it.
+    /// Returns nil when the asset is unavailable locally.
+    private static func computePerceptualHash(identifier: String) async -> UInt64? {
+        guard let asset = PHAsset.fetchAssets(
+            withLocalIdentifiers: [identifier], options: nil
+        ).firstObject else { return nil }
+
+        return await withCheckedContinuation { continuation in
+            let options = PHImageRequestOptions()
+            options.deliveryMode = .fastFormat
+            options.isNetworkAccessAllowed = false
+            options.resizeMode = .fast
+
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: CGSize(width: 8, height: 8),
+                contentMode: .aspectFill,
+                options: options
+            ) { image, _ in
+                continuation.resume(returning: image.flatMap { Self.averageHash(from: $0) })
+            }
+        }
+    }
+
+    /// Converts a UIImage to an 8×8 greyscale average hash (64-bit aHash).
+    private static func averageHash(from image: UIImage) -> UInt64? {
+        guard let cgImage = image.cgImage else { return nil }
+        let side = 8
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        var pixelData = [UInt8](repeating: 0, count: side * side)
+        guard let context = CGContext(
+            data: &pixelData,
+            width: side, height: side,
+            bitsPerComponent: 8, bytesPerRow: side,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: side, height: side))
+
+        let mean = Double(pixelData.reduce(UInt32(0)) { $0 + UInt32($1) }) / Double(pixelData.count)
+        var hash: UInt64 = 0
+        for (idx, pixel) in pixelData.enumerated() {
+            if Double(pixel) >= mean { hash |= (1 << idx) }
+        }
+        return hash
+    }
+
+    /// Counts the number of differing bits between two hashes (Hamming distance).
+    private static func hammingDistance(_ a: UInt64, _ b: UInt64) -> Int {
+        (a ^ b).nonzeroBitCount
     }
 }

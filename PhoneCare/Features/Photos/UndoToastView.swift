@@ -2,29 +2,46 @@ import SwiftUI
 
 struct UndoToastView: View {
     let itemCount: Int
+    /// Overrides the default title. Defaults to "N photos deleted" when nil.
+    var title: String?
+    /// Label for the action button. Defaults to "Undo".
+    var buttonLabel: String
     let countdownDuration: TimeInterval
-    var onUndo: (() -> Void)?
+    var onAction: (() -> Void)?
     var onDismiss: (() -> Void)?
 
     @State private var remainingSeconds: Int
     @State private var timerTask: Task<Void, Never>?
 
-    init(itemCount: Int, countdownDuration: TimeInterval = 30, onUndo: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
+    init(
+        itemCount: Int,
+        title: String? = nil,
+        buttonLabel: String = "Undo",
+        countdownDuration: TimeInterval = 30,
+        onAction: (() -> Void)? = nil,
+        onDismiss: (() -> Void)? = nil
+    ) {
         self.itemCount = itemCount
+        self.title = title
+        self.buttonLabel = buttonLabel
         self.countdownDuration = countdownDuration
-        self.onUndo = onUndo
+        self.onAction = onAction
         self.onDismiss = onDismiss
         _remainingSeconds = State(initialValue: Int(countdownDuration))
+    }
+
+    private var displayTitle: String {
+        title ?? "\(itemCount) photos deleted"
     }
 
     var body: some View {
         HStack(spacing: PCTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                Text("\(itemCount) photos deleted")
+                Text(displayTitle)
                     .typography(.subheadline)
                     .foregroundStyle(.white)
 
-                Text("\(remainingSeconds)s to undo")
+                Text("\(remainingSeconds)s")
                     .typography(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -33,9 +50,9 @@ struct UndoToastView: View {
 
             Button {
                 timerTask?.cancel()
-                onUndo?()
+                onAction?()
             } label: {
-                Text("Undo")
+                Text(buttonLabel)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color.pcAccent)
                     .padding(.horizontal, PCTheme.Spacing.md)
@@ -46,7 +63,7 @@ struct UndoToastView: View {
                     )
             }
             .accessibleTapTarget()
-            .accessibilityHint("Undo the deletion")
+            .accessibilityHint(buttonLabel)
         }
         .padding(PCTheme.Spacing.md)
         .background(
@@ -59,7 +76,7 @@ struct UndoToastView: View {
         .onAppear { startCountdown() }
         .onDisappear { timerTask?.cancel() }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(itemCount) photos deleted. \(remainingSeconds) seconds to undo.")
+        .accessibilityLabel("\(displayTitle). \(remainingSeconds) seconds remaining.")
     }
 
     private func startCountdown() {

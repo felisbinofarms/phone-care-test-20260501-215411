@@ -1,13 +1,11 @@
 import SwiftUI
 
 struct DuplicateGroupView: View {
-    let group: [String]
+    let group: DuplicateGroup
     let groupIndex: Int
     let selectedIDs: Set<String>
     var onToggle: ((String) -> Void)?
     var onKeepBest: (() -> Void)?
-
-    private var bestPhotoID: String? { group.first }
 
     var body: some View {
         CardView {
@@ -23,40 +21,52 @@ struct DuplicateGroupView: View {
                         .typography(.footnote, color: .pcTextSecondary)
                 }
 
+                // Why were these grouped?
+                HStack(spacing: PCTheme.Spacing.xs) {
+                    Image(systemName: group.groupReason.iconName)
+                        .font(.caption2)
+                        .foregroundStyle(Color.pcTextSecondary)
+                    Text(group.groupReason.displayText)
+                        .typography(.caption, color: .pcTextSecondary)
+                }
+
                 // Grid
                 PhotoGridView(
-                    photoIDs: group,
+                    photoIDs: group.assetIdentifiers,
                     selectedIDs: selectedIDs,
                     onToggle: onToggle
                 )
 
                 // Keep Best button
-                if let best = bestPhotoID {
-                    Divider()
-                        .foregroundStyle(Color.pcBorder)
+                Divider()
+                    .foregroundStyle(Color.pcBorder)
 
-                    HStack {
-                        Button {
-                            onKeepBest?()
-                        } label: {
-                            HStack(spacing: PCTheme.Spacing.xs) {
-                                Image(systemName: "star.fill")
-                                    .font(.footnote)
-                                Text("Keep Best, Select Rest")
-                            }
-                        }
-                        .textLinkStyle()
-                        .accessibilityHint("Keeps the highest quality photo and selects all others for deletion")
-
-                        Spacer()
-
-                        if selectedIDs.contains(where: { group.contains($0) }) {
-                            let selectedInGroup = group.filter { selectedIDs.contains($0) }.count
-                            Text("\(selectedInGroup) selected")
-                                .typography(.caption, color: .pcAccent)
+                HStack {
+                    Button {
+                        onKeepBest?()
+                    } label: {
+                        HStack(spacing: PCTheme.Spacing.xs) {
+                            Image(systemName: "star.fill")
+                                .font(.footnote)
+                            Text("Keep Best, Select Rest")
                         }
                     }
+                    .textLinkStyle()
+                    .accessibilityHint(group.keepReason)
+
+                    Spacer()
+
+                    if selectedIDs.contains(where: { group.assetIdentifiers.contains($0) }) {
+                        let selectedInGroup = group.assetIdentifiers.filter { selectedIDs.contains($0) }.count
+                        Text("\(selectedInGroup) selected")
+                            .typography(.caption, color: .pcAccent)
+                    }
                 }
+
+                // Why keep this one?
+                Text(group.keepReason)
+                    .typography(.caption, color: .pcTextSecondary)
+                    .italic()
             }
         }
         .accessibilityElement(children: .contain)

@@ -38,7 +38,7 @@ struct ContactsView: View {
                 UndoToastView(
                     itemCount: viewModel.lastMergedCount,
                     countdownDuration: 30,
-                    onUndo: { viewModel.undoMerge(dataManager: dataManager) },
+                    onAction: { viewModel.undoMerge(dataManager: dataManager) },
                     onDismiss: {
                         viewModel.showUndoToast = false
                         if sharePromptManager.shouldShowPrompt(dataManager: dataManager) {
