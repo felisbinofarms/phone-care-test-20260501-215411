@@ -25,9 +25,12 @@ jobs:
 
       - name: Build PhoneCare archive
         run: |
+          set -eo pipefail
           xcodebuild -project PhoneCare.xcodeproj \
             -scheme ${{ env.SCHEME }} \
             -configuration ${{ env.CONFIGURATION }} \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath ${{ env.DERIVED_DATA_PATH }} \
             -archivePath "build/PhoneCare.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
@@ -35,6 +38,7 @@ jobs:
 
       - name: Export IPA
         run: |
+          set -eo pipefail
           xcodebuild -exportArchive \
             -archivePath "build/PhoneCare.xcarchive" \
             -exportOptionsPlist "tools/ExportOptions.plist" \

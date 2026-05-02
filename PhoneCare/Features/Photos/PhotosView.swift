@@ -43,13 +43,35 @@ struct PhotosView: View {
                 selectionToolbar
             }
 
+            // Deletion in-progress overlay
+            if viewModel.isDeleting {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(true)
+                VStack(spacing: PCTheme.Spacing.md) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                    Text("Deleting photos...")
+                        .typography(.subheadline)
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Deleting photos, please wait")
+            }
+
             // Undo toast
             if viewModel.showUndoToast {
                 UndoToastView(
                     itemCount: viewModel.lastDeletedCount,
-                    onUndo: { viewModel.undoDelete() },
+                    title: "\(viewModel.lastDeletedCount) photo\(viewModel.lastDeletedCount == 1 ? "" : "s") moved to Recently Deleted",
+                    buttonLabel: "Open Photos",
+                    onAction: {
+                        if let url = URL(string: "photos-redirect://") {
+                            UIApplication.shared.open(url)
+                        }
+                    },
                     onDismiss: {
-                        viewModel.showUndoToast = false
+                        viewModel.dismissDeletedToast()
                         if sharePromptManager.shouldShowPrompt(dataManager: dataManager) {
                             withAnimation { showSharePrompt = true }
                             sharePromptManager.recordPromptShown(dataManager: dataManager)
@@ -75,7 +97,9 @@ struct PhotosView: View {
             BatchDeleteSheet(
                 photoCount: viewModel.selectedCount,
                 estimatedSize: Int64(viewModel.selectedCount) * 3_500_000,
-                onConfirm: { viewModel.confirmBatchDelete() },
+                onConfirm: {
+                    Task { await viewModel.confirmBatchDelete(dataManager: dataManager) }
+                },
                 onCancel: { viewModel.showBatchDeleteSheet = false }
             )
         }
@@ -161,12 +185,86 @@ struct PhotosView: View {
                 onToggle: { viewModel.toggleSelection($0) }
             )
         case .largeVideos:
-            PhotoGridView(
-                photoIDs: viewModel.largeVideoIDs,
-                selectedIDs: viewModel.selectedPhotoIDs,
-                onToggle: { viewModel.toggleSelection($0) }
-            )
+            largeVideosContent
         }
+    }
+
+    // MARK: - Large Videos (space-first: biggest video listed first)
+
+    private var largeVideosContent: some View {
+        VStack(spacing: PCTheme.Spacing.sm) {
+            if viewModel.largeVideoInfos.isEmpty {
+                // Fallback to plain grid if infos not loaded yet
+                PhotoGridView(
+                    photoIDs: viewModel.largeVideoIDs,
+                    selectedIDs: viewModel.selectedPhotoIDs,
+                    onToggle: { viewModel.toggleSelection($0) }
+                )
+            } else {
+                ForEach(viewModel.largeVideoInfos) { info in
+                    largeVideoRow(info: info)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func largeVideoRow(info: LargeVideoInfo) -> some View {
+        let isSelected = viewModel.selectedPhotoIDs.contains(info.id)
+        CardView {
+            HStack(spacing: PCTheme.Spacing.sm) {
+                // Thumbnail
+                AssetThumbnailView(assetID: info.id)
+                    .frame(width: 72, height: 72)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(isSelected ? Color.pcAccent : Color.clear, lineWidth: 2)
+                    )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    if info.isScreenRecording {
+                        Label("Screen Recording", systemImage: "record.circle")
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+
+                    Text(ByteCountFormatter.string(
+                        fromByteCount: info.estimatedBytes,
+                        countStyle: .file
+                    ))
+                    .typography(.headline)
+
+                    Text(durationText(info.durationSeconds))
+                        .typography(.footnote, color: .pcTextSecondary)
+
+                    if let date = info.creationDate {
+                        Text(date.formatted(date: .abbreviated, time: .omitted))
+                            .typography(.caption, color: .pcTextSecondary)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.pcAccent : Color.pcTextSecondary)
+            }
+            .padding(.vertical, PCTheme.Spacing.xs)
+            .contentShape(Rectangle())
+            .onTapGesture { viewModel.toggleSelection(info.id) }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(durationText(info.durationSeconds)) video, \(ByteCountFormatter.string(fromByteCount: info.estimatedBytes, countStyle: .file))\(info.isScreenRecording ? ", screen recording" : "")")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func durationText(_ seconds: Double) -> String {
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        return String(format: "%d:%02d", m, s)
     }
 
     private var screenshotsByAgeContent: some View {
@@ -215,9 +313,7 @@ struct PhotosView: View {
                     selectedIDs: viewModel.selectedPhotoIDs,
                     onToggle: { viewModel.toggleSelection($0) },
                     onKeepBest: {
-                        // Select all except first (best)
-                        let rest = Array(group.dropFirst())
-                        viewModel.selectAll(in: rest)
+                        viewModel.selectAll(in: group.duplicateIdentifiers)
                     }
                 )
             }

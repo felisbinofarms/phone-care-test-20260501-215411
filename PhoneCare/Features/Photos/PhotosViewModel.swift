@@ -42,16 +42,19 @@ final class PhotosViewModel {
     private(set) var permissionDenied: Bool = false
 
     // Group data
-    private(set) var duplicateGroups: [[String]] = []
+    private(set) var duplicateGroups: [DuplicateGroup] = []
     private(set) var screenshotIDs: [String] = []
     private(set) var blurryIDs: [String] = []
     private(set) var largeVideoIDs: [String] = []
+    /// Large video metadata sorted by file size descending (biggest wins first).
+    private(set) var largeVideoInfos: [LargeVideoInfo] = []
 
     // Selection
     var selectedPhotoIDs: Set<String> = []
 
     // Batch delete
     var showBatchDeleteSheet: Bool = false
+    private(set) var isDeleting: Bool = false
     private(set) var lastDeletedCount: Int = 0
     private(set) var lastDeletedSize: Int64 = 0
     var showUndoToast: Bool = false
@@ -78,7 +81,7 @@ final class PhotosViewModel {
     var currentCategoryDescription: String {
         switch selectedCategory {
         case .duplicates:
-            let count = duplicateGroups.reduce(0) { $0 + $1.count }
+            let count = duplicateGroups.reduce(0) { $0 + $1.assetIdentifiers.count }
             return count == 0 ? "No duplicates found" : "\(duplicateGroups.count) groups with \(count) photos"
         case .screenshots:
             return screenshotIDs.isEmpty ? "No screenshots found" : "\(screenshotIDs.count) screenshots"
@@ -127,18 +130,19 @@ final class PhotosViewModel {
             }
         }
 
+        // Oldest first — most likely safe-to-delete, surface at top
         var groups: [ScreenshotAgeGroup] = []
-        if !thisWeek.isEmpty {
-            groups.append(ScreenshotAgeGroup(title: "This Week", ids: thisWeek))
-        }
-        if !lastMonth.isEmpty {
-            groups.append(ScreenshotAgeGroup(title: "Last Month", ids: lastMonth))
+        if !olderThan90.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "Older than 90 Days", ids: olderThan90))
         }
         if !olderThan30.isEmpty {
             groups.append(ScreenshotAgeGroup(title: "Older than 30 Days", ids: olderThan30))
         }
-        if !olderThan90.isEmpty {
-            groups.append(ScreenshotAgeGroup(title: "Older than 90 Days", ids: olderThan90))
+        if !lastMonth.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "Last Month", ids: lastMonth))
+        }
+        if !thisWeek.isEmpty {
+            groups.append(ScreenshotAgeGroup(title: "This Week", ids: thisWeek))
         }
         return groups
     }
@@ -157,7 +161,17 @@ final class PhotosViewModel {
                 fetchLimit: 1
             )
             if let cache = caches.first {
-                duplicateGroups = cache.decodedDuplicateGroups()
+                // Convert cached [[String]] to [DuplicateGroup] (reasons not persisted)
+                duplicateGroups = cache.decodedDuplicateGroups().enumerated().map { idx, ids in
+                    DuplicateGroup(
+                        id: "cache-\(idx)",
+                        assetIdentifiers: ids,
+                        suggestedKeepIdentifier: ids.first ?? "",
+                        estimatedSavingsBytes: 0,
+                        groupReason: .loadedFromCache,
+                        keepReason: "Re-scan to see why this photo is recommended."
+                    )
+                }
                 screenshotIDs = cache.decodedScreenshotIDs()
                 blurryIDs = cache.decodedBlurryIDs()
                 largeVideoIDs = cache.decodedLargeVideoIDs()
@@ -186,10 +200,11 @@ final class PhotosViewModel {
             await analyzer.saveCache(to: dataManager, analysisResult: analysisResult)
             updateScanResult(dataManager: dataManager, analysisResult: analysisResult)
 
-            duplicateGroups = analysisResult.duplicateGroups.map { $0.assetIdentifiers }
+            duplicateGroups = analysisResult.duplicateGroups
             screenshotIDs = analysisResult.screenshotIdentifiers
             blurryIDs = analysisResult.blurryIdentifiers
             largeVideoIDs = analysisResult.largeVideoIdentifiers
+            largeVideoInfos = analysisResult.largeVideoInfos
 
             isScanning = false
             scanComplete = true
@@ -221,17 +236,91 @@ final class PhotosViewModel {
         showBatchDeleteSheet = true
     }
 
-    func confirmBatchDelete() {
-        lastDeletedCount = selectedPhotoIDs.count
-        lastDeletedSize = Int64(selectedPhotoIDs.count) * 3_500_000 // Estimate ~3.5MB per photo
-        selectedPhotoIDs.removeAll()
+    func confirmBatchDelete(dataManager: DataManager) async {
+        let idsToDelete = Array(selectedPhotoIDs)
+        guard !idsToDelete.isEmpty else { return }
+
+        isDeleting = true
         showBatchDeleteSheet = false
+
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: idsToDelete, options: nil)
+        var assetArray: [PHAsset] = []
+        assets.enumerateObjects { asset, _, _ in assetArray.append(asset) }
+
+        guard !assetArray.isEmpty else {
+            isDeleting = false
+            selectedPhotoIDs.removeAll()
+            return
+        }
+
+        // Estimate bytes before deletion
+        var estimatedBytes: Int64 = 0
+        for asset in assetArray {
+            var assetSize: Int64 = 0
+            for resource in PHAssetResource.assetResources(for: asset) {
+                if let size = resource.value(forKey: "fileSize") as? Int64 { assetSize += size }
+            }
+            if assetSize == 0 {
+                let pixelCount = Int64(asset.pixelWidth * asset.pixelHeight)
+                assetSize = asset.mediaType == .video
+                    ? max(Int64(asset.duration * 8_000_000), pixelCount * 4)
+                    : pixelCount * 3
+            }
+            estimatedBytes += assetSize
+        }
+
+        do {
+            let assetsNSArray = assetArray as NSArray
+            try await PHPhotoLibrary.shared().performChanges { @Sendable in
+                PHAssetChangeRequest.deleteAssets(assetsNSArray)
+            }
+            // User confirmed the iOS system deletion dialog.
+            // Photos move to Recently Deleted (30-day recovery window).
+            applyDeletion(
+                deletedIDs: Set(idsToDelete),
+                count: assetArray.count,
+                bytes: estimatedBytes
+            )
+        } catch {
+            // User cancelled the iOS system dialog — silently restore state.
+        }
+
+        isDeleting = false
+    }
+
+    /// Updates all local state after a confirmed deletion.
+    /// Extracted so the state-update logic is testable without PHPhotoLibrary.
+    func applyDeletion(deletedIDs: Set<String>, count: Int, bytes: Int64) {
+        selectedPhotoIDs.subtract(deletedIDs)
+        lastDeletedCount = count
+        lastDeletedSize = bytes
+        showBatchDeleteSheet = false
+
+        duplicateGroups = duplicateGroups.compactMap { group in
+            let remaining = group.assetIdentifiers.filter { !deletedIDs.contains($0) }
+            guard remaining.count >= 2 else { return nil }
+            let newKeep = deletedIDs.contains(group.suggestedKeepIdentifier)
+                ? (remaining.first ?? group.suggestedKeepIdentifier)
+                : group.suggestedKeepIdentifier
+            return DuplicateGroup(
+                id: group.id,
+                assetIdentifiers: remaining,
+                suggestedKeepIdentifier: newKeep,
+                estimatedSavingsBytes: group.estimatedSavingsBytes,
+                groupReason: group.groupReason,
+                keepReason: group.keepReason
+            )
+        }
+        screenshotIDs = screenshotIDs.filter { !deletedIDs.contains($0) }
+        blurryIDs = blurryIDs.filter { !deletedIDs.contains($0) }
+        largeVideoIDs = largeVideoIDs.filter { !deletedIDs.contains($0) }
+        largeVideoInfos = largeVideoInfos.filter { !deletedIDs.contains($0.id) }
+
         showUndoToast = true
     }
 
-    func undoDelete() {
+    func dismissDeletedToast() {
         showUndoToast = false
-        // Undo handled by CleanupUndoManager
     }
 
     // MARK: - Premium Helpers
@@ -240,7 +329,7 @@ final class PhotosViewModel {
         isPremium || index < freeGroupLimit
     }
 
-    func visibleDuplicateGroups(isPremium: Bool) -> [[String]] {
+    func visibleDuplicateGroups(isPremium: Bool) -> [DuplicateGroup] {
         if isPremium { return duplicateGroups }
         return Array(duplicateGroups.prefix(freeGroupLimit))
     }
@@ -266,4 +355,24 @@ final class PhotosViewModel {
             // Persistence failure shouldn't block scan results from showing
         }
     }
+
+    // MARK: - Debug Test Helpers
+
+#if DEBUG
+    /// Injects scan data directly, bypassing PHPhotoLibrary. For unit tests only.
+    func injectTestData(
+        duplicateGroups: [DuplicateGroup],
+        screenshotIDs: [String],
+        blurryIDs: [String],
+        largeVideoIDs: [String],
+        largeVideoInfos: [LargeVideoInfo] = []
+    ) {
+        self.duplicateGroups = duplicateGroups
+        self.screenshotIDs = screenshotIDs
+        self.blurryIDs = blurryIDs
+        self.largeVideoIDs = largeVideoIDs
+        self.largeVideoInfos = largeVideoInfos
+        self.scanComplete = true
+    }
+#endif
 }

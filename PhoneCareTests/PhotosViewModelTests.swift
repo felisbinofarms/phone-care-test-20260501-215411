@@ -155,25 +155,106 @@ struct PhotosViewModelTests {
         #expect(vm.showBatchDeleteSheet == true)
     }
 
-    @Test("confirmBatchDelete records the deleted count and triggers undo toast")
-    func confirmBatchDelete_counts() {
+    // MARK: - applyDeletion
+
+    @Test("applyDeletion clears selection, records count and size, shows toast")
+    func applyDeletion_clearsSelectionAndShowsToast() {
         let vm = PhotosViewModel()
         vm.selectAll(in: ["a", "b", "c"])
-        vm.prepareBatchDelete()
-        vm.confirmBatchDelete()
+        vm.applyDeletion(deletedIDs: ["a", "b", "c"], count: 3, bytes: 9_000_000)
+        #expect(vm.selectedPhotoIDs.isEmpty)
         #expect(vm.lastDeletedCount == 3)
+        #expect(vm.lastDeletedSize == 9_000_000)
         #expect(vm.showUndoToast == true)
         #expect(vm.showBatchDeleteSheet == false)
-        #expect(vm.selectedPhotoIDs.isEmpty)
     }
 
-    @Test("undoDelete clears the undo toast")
-    func undoDelete_clearsToast() {
+    @Test("applyDeletion removes deleted IDs from screenshotIDs and blurryIDs")
+    func applyDeletion_removesFromFlatLists() {
         let vm = PhotosViewModel()
-        vm.selectAll(in: ["a"])
-        vm.prepareBatchDelete()
-        vm.confirmBatchDelete()
-        vm.undoDelete()
+        vm.injectTestData(
+            duplicateGroups: [],
+            screenshotIDs: ["s1", "s2", "s3"],
+            blurryIDs: ["b1", "b2"],
+            largeVideoIDs: []
+        )
+        vm.applyDeletion(deletedIDs: ["s1", "b1"], count: 2, bytes: 0)
+        #expect(!vm.screenshotIDs.contains("s1"))
+        #expect(vm.screenshotIDs.contains("s2"))
+        #expect(!vm.blurryIDs.contains("b1"))
+        #expect(vm.blurryIDs.contains("b2"))
+    }
+
+    @Test("applyDeletion removes deleted IDs from duplicate groups, keeps groups with 2+ remaining")
+    func applyDeletion_removesFromDuplicateGroups() {
+        let vm = PhotosViewModel()
+        let group = DuplicateGroup(
+            id: "g1",
+            assetIdentifiers: ["a", "b", "c"],
+            suggestedKeepIdentifier: "a",
+            estimatedSavingsBytes: 5_000_000
+        )
+        vm.injectTestData(
+            duplicateGroups: [group],
+            screenshotIDs: [],
+            blurryIDs: [],
+            largeVideoIDs: []
+        )
+        // Delete one duplicate — group still has 2 remaining, should survive
+        vm.applyDeletion(deletedIDs: ["b"], count: 1, bytes: 0)
+        #expect(vm.duplicateGroups.count == 1)
+        #expect(!vm.duplicateGroups[0].assetIdentifiers.contains("b"))
+    }
+
+    @Test("applyDeletion drops groups that fall below 2 assets after deletion")
+    func applyDeletion_dropsGroupsBelow2() {
+        let vm = PhotosViewModel()
+        let group = DuplicateGroup(
+            id: "g1",
+            assetIdentifiers: ["a", "b"],
+            suggestedKeepIdentifier: "a",
+            estimatedSavingsBytes: 3_000_000
+        )
+        vm.injectTestData(
+            duplicateGroups: [group],
+            screenshotIDs: [],
+            blurryIDs: [],
+            largeVideoIDs: []
+        )
+        // Delete one photo — group falls to 1 asset, should be removed
+        vm.applyDeletion(deletedIDs: ["b"], count: 1, bytes: 0)
+        #expect(vm.duplicateGroups.isEmpty)
+    }
+
+    @Test("applyDeletion reassigns suggestedKeepIdentifier when the kept asset is deleted")
+    func applyDeletion_reassignsKeepWhenKeptAssetDeleted() {
+        let vm = PhotosViewModel()
+        let group = DuplicateGroup(
+            id: "g1",
+            assetIdentifiers: ["a", "b", "c"],
+            suggestedKeepIdentifier: "a",
+            estimatedSavingsBytes: 5_000_000
+        )
+        vm.injectTestData(
+            duplicateGroups: [group],
+            screenshotIDs: [],
+            blurryIDs: [],
+            largeVideoIDs: []
+        )
+        // Delete the suggested-keep asset
+        vm.applyDeletion(deletedIDs: ["a"], count: 1, bytes: 0)
+        #expect(vm.duplicateGroups.count == 1)
+        #expect(vm.duplicateGroups[0].suggestedKeepIdentifier != "a")
+    }
+
+    // MARK: - dismissDeletedToast
+
+    @Test("dismissDeletedToast clears the undo toast")
+    func dismissDeletedToast_clearsToast() {
+        let vm = PhotosViewModel()
+        vm.applyDeletion(deletedIDs: ["x"], count: 1, bytes: 1_000_000)
+        #expect(vm.showUndoToast == true)
+        vm.dismissDeletedToast()
         #expect(vm.showUndoToast == false)
     }
 }

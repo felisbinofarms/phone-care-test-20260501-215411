@@ -149,4 +149,103 @@ struct PhotoAnalyzerTests {
         #expect(result.largeVideoCount == 0)
         #expect(result.blurryCount == 0)
     }
+
+    // MARK: - GroupReason display
+
+    @Test("GroupReason.exactDuplicate has expected displayText and iconName")
+    func groupReason_exactDuplicate() {
+        let reason = GroupReason.exactDuplicate
+        #expect(reason.displayText == "These are identical copies of the same photo.")
+        #expect(reason.iconName == "doc.on.doc")
+    }
+
+    @Test("GroupReason.burstSequence has expected displayText and iconName")
+    func groupReason_burstSequence() {
+        let reason = GroupReason.burstSequence
+        #expect(reason.displayText == "These were captured in rapid sequence (burst mode).")
+        #expect(reason.iconName == "burst")
+    }
+
+    @Test("GroupReason.similarShots has expected displayText")
+    func groupReason_similarShots() {
+        let reason = GroupReason.similarShots
+        #expect(reason.displayText == "These photos look very similar.")
+    }
+
+    @Test("GroupReason.loadedFromCache has expected displayText")
+    func groupReason_loadedFromCache() {
+        let reason = GroupReason.loadedFromCache
+        #expect(reason.displayText == "Similar photos from your previous scan.")
+    }
+
+    // MARK: - DuplicateGroup: groupReason defaults
+
+    @Test("DuplicateGroup defaults to loadedFromCache groupReason")
+    func duplicateGroup_defaultGroupReason() {
+        let group = DuplicateGroup(
+            id: "g1",
+            assetIdentifiers: ["a", "b"],
+            suggestedKeepIdentifier: "a",
+            estimatedSavingsBytes: 0
+        )
+        #expect(group.groupReason == .loadedFromCache)
+    }
+
+    @Test("DuplicateGroup can be created with a specific groupReason")
+    func duplicateGroup_customGroupReason() {
+        let group = DuplicateGroup(
+            id: "g1",
+            assetIdentifiers: ["a", "b"],
+            suggestedKeepIdentifier: "a",
+            estimatedSavingsBytes: 0,
+            groupReason: .burstSequence,
+            keepReason: "User previously selected this as the best shot."
+        )
+        #expect(group.groupReason == .burstSequence)
+        #expect(group.keepReason == "User previously selected this as the best shot.")
+    }
+
+    // MARK: - LargeVideoInfo
+
+    @Test("LargeVideoInfo id matches constructor id")
+    func largeVideoInfo_id() {
+        let info = LargeVideoInfo(
+            id: "video-123",
+            estimatedBytes: 500_000_000,
+            durationSeconds: 120.5,
+            creationDate: Date(),
+            isScreenRecording: false
+        )
+        #expect(info.id == "video-123")
+        #expect(info.estimatedBytes == 500_000_000)
+        #expect(info.isScreenRecording == false)
+    }
+
+    @Test("LargeVideoInfo isScreenRecording flag is preserved")
+    func largeVideoInfo_screenRecording() {
+        let info = LargeVideoInfo(
+            id: "rec-1",
+            estimatedBytes: 100_000_000,
+            durationSeconds: 60.0,
+            creationDate: nil,
+            isScreenRecording: true
+        )
+        #expect(info.isScreenRecording == true)
+        #expect(info.creationDate == nil)
+    }
+
+    // MARK: - PhotoAnalysisResult: largeVideoInfos default
+
+    @Test("PhotoAnalysisResult largeVideoInfos defaults to empty array")
+    func photoResult_largeVideoInfos_default() {
+        let result = PhotoAnalysisResult(
+            totalPhotos: 10,
+            duplicateGroups: [],
+            screenshotIdentifiers: [],
+            largeVideoIdentifiers: ["v1"],
+            blurryIdentifiers: []
+        )
+        #expect(result.largeVideoInfos.isEmpty)
+        #expect(result.largeVideoCount == 1)
+    }
 }
