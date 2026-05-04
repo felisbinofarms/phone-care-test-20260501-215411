@@ -82,28 +82,69 @@ struct BatteryView: View {
     // MARK: - Quick Stats
 
     private var quickStatsRow: some View {
-        HStack(spacing: PCTheme.Spacing.md) {
-            statCard(
-                icon: "thermometer.medium",
-                title: "Temperature",
-                value: viewModel.thermalStateText,
-                color: viewModel.thermalStateColor
-            )
+        VStack(spacing: PCTheme.Spacing.md) {
+            HStack(spacing: PCTheme.Spacing.md) {
+                statCard(
+                    icon: "thermometer.medium",
+                    title: "Temperature",
+                    value: viewModel.thermalStateText,
+                    color: viewModel.thermalStateColor
+                )
 
-            statCard(
-                icon: "bolt.circle",
-                title: "Low Power",
-                value: viewModel.isLowPowerMode ? "On" : "Off",
-                color: viewModel.isLowPowerMode ? .pcAccent : .pcTextSecondary
-            )
+                statCard(
+                    icon: "bolt.circle",
+                    title: "Low Power",
+                    value: viewModel.isLowPowerMode ? "On" : "Off",
+                    color: viewModel.isLowPowerMode ? .pcAccent : .pcTextSecondary
+                )
 
-            statCard(
-                icon: "heart.fill",
-                title: "Capacity",
-                value: viewModel.capacityText,
-                color: .pcAccent
-            )
+                if viewModel.maxCapacity != nil {
+                    statCard(
+                        icon: "heart.fill",
+                        title: "Capacity",
+                        value: viewModel.capacityText,
+                        color: .pcAccent
+                    )
+                }
+            }
+
+            if viewModel.maxCapacity == nil {
+                capacityUnavailableCard
+            }
         }
+    }
+
+    private var capacityUnavailableCard: some View {
+        CardView {
+            HStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: "heart.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.pcTextSecondary)
+                    .voiceOverHidden()
+
+                VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                    Text("Battery Capacity")
+                        .typography(.subheadline)
+
+                    Text("Battery health details are only available in iPhone Settings.")
+                        .typography(.footnote, color: .pcTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .fixedSize()
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Battery capacity unavailable. Battery health details are only available in iPhone Settings.")
+        .accessibilityHint("Activate Open Settings button to view in Settings")
     }
 
     private func statCard(icon: String, title: String, value: String, color: Color) -> some View {

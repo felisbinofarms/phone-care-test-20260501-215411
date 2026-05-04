@@ -57,43 +57,60 @@ struct StorageView: View {
 
     private var storageOverview: some View {
         CardView {
-            VStack(spacing: PCTheme.Spacing.md) {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                        Text("Used")
-                            .typography(.footnote, color: .pcTextSecondary)
-                        Text(viewModel.formatBytes(viewModel.usedStorage))
-                            .typography(.title2)
-                    }
+            if let error = viewModel.errorMessage {
+                VStack(spacing: PCTheme.Spacing.sm) {
+                    Image(systemName: "internaldrive")
+                        .font(.title2)
+                        .foregroundStyle(Color.pcTextSecondary)
+                        .voiceOverHidden()
 
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: PCTheme.Spacing.xs) {
-                        Text("Free")
-                            .typography(.footnote, color: .pcTextSecondary)
-                        Text(viewModel.formatBytes(viewModel.freeStorage))
-                            .typography(.title2, color: .pcAccent)
-                    }
+                    Text(error)
+                        .typography(.subheadline, color: .pcTextSecondary)
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, PCTheme.Spacing.sm)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(error)
+            } else {
+                VStack(spacing: PCTheme.Spacing.md) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                            Text("Used")
+                                .typography(.footnote, color: .pcTextSecondary)
+                            Text(viewModel.formatBytes(viewModel.usedStorage))
+                                .typography(.title2)
+                        }
 
-                // Simple progress bar
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.pcBorder.opacity(0.3))
+                        Spacer()
 
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(usedColor)
-                            .frame(width: geo.size.width * CGFloat(min(viewModel.usedPercentage, 100)) / 100)
+                        VStack(alignment: .trailing, spacing: PCTheme.Spacing.xs) {
+                            Text("Free")
+                                .typography(.footnote, color: .pcTextSecondary)
+                            Text(viewModel.formatBytes(viewModel.freeStorage))
+                                .typography(.title2, color: .pcAccent)
+                        }
                     }
-                }
-                .frame(height: 8)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Storage usage: \(Int(viewModel.usedPercentage)) percent used")
 
-                Text("of \(viewModel.formatBytes(viewModel.totalStorage)) total")
-                    .typography(.caption, color: .pcTextSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    // Simple progress bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.pcBorder.opacity(0.3))
+
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(usedColor)
+                                .frame(width: geo.size.width * CGFloat(min(viewModel.usedPercentage, 100)) / 100)
+                        }
+                    }
+                    .frame(height: 8)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Storage usage: \(Int(viewModel.usedPercentage)) percent used")
+
+                    Text("of \(viewModel.formatBytes(viewModel.totalStorage)) total")
+                        .typography(.caption, color: .pcTextSecondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
         }
         .accessibilityElement(children: .combine)

@@ -149,4 +149,66 @@ struct ContactAnalyzerTests {
         let digits = result.filter { $0.isNumber }
         #expect(digits == result)
     }
+
+    // MARK: - mergeContacts with empty remove list
+
+    @Test("mergeContacts with empty removeIdentifiers throws ContactMergeError without crashing")
+    func mergeContacts_emptyRemoveList_throwsTypedError() async {
+        let analyzer = ContactAnalyzer()
+        let dataManager = DataManager(inMemory: true)
+        // In the test environment CNContactStore cannot find the identifier,
+        // so the function throws contactNotFound — not a crash.
+        await #expect(throws: ContactMergeError.self) {
+            try await analyzer.mergeContacts(
+                keepIdentifier: "nonexistent-test-id-000",
+                removeIdentifiers: [],
+                dataManager: dataManager
+            )
+        }
+    }
+
+    // MARK: - Duplicate group with zero-field contacts
+
+    @Test("ContactDuplicateGroup always has suggestedPrimaryIdentifier inside contactIdentifiers")
+    func duplicateGroup_zerFields_suggestedPrimaryInGroup() {
+        // Represents a group where contacts have fieldCount == 0 but a primary was still chosen
+        let group = ContactDuplicateGroup(
+            id: "g-zero-fields",
+            contactIdentifiers: ["id_alpha", "id_beta"],
+            contactNames: ["", ""],
+            suggestedPrimaryIdentifier: "id_alpha",
+            matchReason: .sameName
+        )
+        #expect(group.contactIdentifiers.contains(group.suggestedPrimaryIdentifier))
+    }
+
+    @Test("ContactDuplicateGroup with empty names still has a valid suggestedPrimaryIdentifier")
+    func duplicateGroup_emptyNames_validPrimary() {
+        let group = ContactDuplicateGroup(
+            id: "g-empty",
+            contactIdentifiers: ["x1", "x2", "x3"],
+            contactNames: ["", "", ""],
+            suggestedPrimaryIdentifier: "x1",
+            matchReason: .samePhone
+        )
+        #expect(!group.suggestedPrimaryIdentifier.isEmpty)
+        #expect(group.contactIdentifiers.contains(group.suggestedPrimaryIdentifier))
+    }
+
+    // MARK: - Phone normalization: +1 prefix and raw number produce identical result
+
+    @Test("normalizePhoneNumber returns same string for +1-555-867-5309 and 5558675309")
+    func normalizePhone_withCountryCodeDash_matchesRaw() {
+        let withCC = ContactAnalyzer.normalizePhoneNumber("+1-555-867-5309")
+        let raw    = ContactAnalyzer.normalizePhoneNumber("5558675309")
+        #expect(withCC == raw)
+        #expect(withCC == "5558675309")
+    }
+
+    @Test("normalizePhoneNumber: 1 (555) 867-5309 and 5558675309 produce the same result")
+    func normalizePhone_spacedCountryCode_matchesRaw() {
+        let withCC = ContactAnalyzer.normalizePhoneNumber("1 (555) 867-5309")
+        let raw    = ContactAnalyzer.normalizePhoneNumber("5558675309")
+        #expect(withCC == raw)
+    }
 }

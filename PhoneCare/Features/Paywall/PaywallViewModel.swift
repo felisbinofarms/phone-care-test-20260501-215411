@@ -41,7 +41,7 @@ final class PaywallViewModel {
         isLoadingProducts = false
         // Default select the middle (monthly) product
         if selectedProduct == nil {
-            selectedProduct = products.count >= 2 ? products[1] : products.first
+            selectedProduct = products.indices.contains(1) ? products[1] : products.first
         }
     }
 

@@ -176,4 +176,37 @@ struct PrivacyAuditorTests {
             )
         }
     }
+
+    // MARK: - performAudit integration
+
+    @Test("performAudit completes without throwing in test environment")
+    func performAudit_doesNotThrow() async {
+        let auditor = PrivacyAuditor()
+        let permManager = PermissionManager()
+        let result = await auditor.performAudit(permissionManager: permManager)
+        // Result is accessible — no throw
+        #expect(result.privacyScore >= 0)
+        #expect(result.privacyScore <= 100)
+    }
+
+    @Test("performAudit result contains at least one permission entry")
+    func performAudit_resultContainsPermissions() async {
+        let auditor = PrivacyAuditor()
+        let permManager = PermissionManager()
+        let result = await auditor.performAudit(permissionManager: permManager)
+        #expect(!result.summaries.isEmpty)
+    }
+
+    @Test("performAudit concurrent calls do not crash")
+    func performAudit_concurrentCalls_noCrash() async {
+        let auditor = PrivacyAuditor()
+        let permManager = PermissionManager()
+        // Fire two overlapping audit calls; the second sets isAuditing while first runs.
+        // Neither should crash.
+        async let first  = auditor.performAudit(permissionManager: permManager)
+        async let second = auditor.performAudit(permissionManager: permManager)
+        let (r1, r2) = await (first, second)
+        #expect(r1.privacyScore >= 0)
+        #expect(r2.privacyScore >= 0)
+    }
 }

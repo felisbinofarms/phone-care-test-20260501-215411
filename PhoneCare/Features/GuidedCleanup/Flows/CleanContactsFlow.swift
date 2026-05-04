@@ -110,7 +110,7 @@ struct CleanContactsFlow: View {
 
         isMerging = true
         mergeError = false
-        Task {
+        Task { @MainActor in
             var mergedCount = 0
             var failedCount = 0
             for group in result.duplicateGroups {

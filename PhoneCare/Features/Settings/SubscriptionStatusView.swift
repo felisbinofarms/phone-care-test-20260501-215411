@@ -76,6 +76,12 @@ struct SubscriptionStatusView: View {
                     }
                     .primaryCTAStyle()
 
+                    Button("Restore Purchases") {
+                        Task { await subscriptionManager.restorePurchases() }
+                    }
+                    .textLinkStyle()
+                    .accessibleTapTarget()
+
                     #if DEBUG
                     Toggle("Test user premium bypass", isOn: Binding(
                         get: { subscriptionManager.debugPremiumBypassEnabled },

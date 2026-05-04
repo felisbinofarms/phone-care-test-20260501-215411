@@ -16,11 +16,13 @@ final class StorageViewModel {
     private(set) var recommendations: [StorageRecommendation] = []
     private(set) var isLoading: Bool = false
     private(set) var lastScanDate: Date?
+    private(set) var errorMessage: String?
 
     // MARK: - Load
 
     func load(dataManager: DataManager) {
         isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
 
         do {
@@ -54,11 +56,17 @@ final class StorageViewModel {
             let total = Int64(values.volumeTotalCapacity ?? 0)
             let free = values.volumeAvailableCapacityForImportantUsage ?? 0
             let recoverable = values.volumeAvailableCapacityForOpportunisticUsage ?? free
+            if total == 0 {
+                errorMessage = "Unable to read storage information"
+                return
+            }
             totalStorage = total
             freeStorage = free
             recoverableStorage = max(recoverable, free)
             usedStorage = total - free
             usedPercentage = total > 0 ? Double(usedStorage) / Double(total) * 100 : 0
+        } else {
+            errorMessage = "Unable to read storage information"
         }
     }
 
@@ -79,7 +87,7 @@ final class StorageViewModel {
             ("apps", "Apps", "square.grid.2x2.fill", Color.pcAccent),
             ("messages", "Messages", "message.fill", .purple),
             ("system", "System", "gearshape.fill", .gray),
-            ("other", "Other", "doc.fill", .orange),
+            ("other", "Other", "doc.fill", Color.pcTextSecondary),
         ]
 
         for (key, name, icon, color) in knownCategories {

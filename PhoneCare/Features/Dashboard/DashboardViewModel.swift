@@ -35,6 +35,10 @@ final class DashboardViewModel {
 
     // MARK: - Load
 
+    func refresh(dataManager: DataManager, permissionManager: PermissionManager) {
+        load(dataManager: dataManager, permissionManager: permissionManager)
+    }
+
     func load(dataManager: DataManager, permissionManager: PermissionManager) {
         isLoading = true
         defer { isLoading = false }
@@ -149,19 +153,19 @@ final class DashboardViewModel {
         switch key {
         case "storage":
             let score = result.storageScore
-            return score >= 51 ? .good("\(score)%") : .warning("\(score)%")
+            return score >= HealthScoreCalculator.goodThreshold ? .good("\(score)%") : .warning("\(score)%")
         case "photos":
             let score = result.photoScore
-            return score >= 51 ? .good("\(score)%") : .warning("\(score)%")
+            return score >= HealthScoreCalculator.goodThreshold ? .good("\(score)%") : .warning("\(score)%")
         case "contacts":
             let score = result.contactScore
-            return score >= 51 ? .good("\(score)%") : .warning("\(score)%")
+            return score >= HealthScoreCalculator.goodThreshold ? .good("\(score)%") : .warning("\(score)%")
         case "battery":
             let score = result.batteryScore
-            return score >= 51 ? .good("\(score)%") : .warning("\(score)%")
+            return score >= HealthScoreCalculator.goodThreshold ? .good("\(score)%") : .warning("\(score)%")
         case "privacy":
             let score = result.privacyScore
-            return score >= 51 ? .good("\(score)%") : .warning("\(score)%")
+            return score >= HealthScoreCalculator.goodThreshold ? .good("\(score)%") : .warning("\(score)%")
         default:
             return .neutral("--")
         }
@@ -210,6 +214,16 @@ final class DashboardViewModel {
         default:         return key.capitalized
         }
     }
+
+    // MARK: - Testing Support
+
+    #if DEBUG
+    func injectForTesting(healthScore: Int, healthResult: HealthScoreResult?, quickWins: [QuickWin] = []) {
+        self.healthScore = healthScore
+        self.healthResult = healthResult
+        self.quickWins = quickWins
+    }
+    #endif
 }
 
 // MARK: - Quick Win Model

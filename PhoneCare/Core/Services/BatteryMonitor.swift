@@ -170,6 +170,16 @@ final class BatteryMonitor {
         logger.info("Battery monitoring stopped.")
     }
 
+    // MARK: - Deinit
+
+    deinit {
+        let center = NotificationCenter.default
+        if let obs = levelObservation { center.removeObserver(obs) }
+        if let obs = stateObservation { center.removeObserver(obs) }
+        if let obs = thermalObservation { center.removeObserver(obs) }
+        if let obs = powerModeObservation { center.removeObserver(obs) }
+    }
+
     // MARK: - Read Current State
 
     func readCurrentState() {

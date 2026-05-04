@@ -125,7 +125,7 @@ struct CleanPhotosFlow: View {
         }
 
         isDeleting = true
-        Task {
+        Task { @MainActor in
             let assets = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
             var assetArray: [PHAsset] = []
             assets.enumerateObjects { asset, _, _ in

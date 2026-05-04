@@ -125,16 +125,24 @@ struct ContactsView: View {
                     Divider()
                         .foregroundStyle(Color.pcBorder)
 
-                    Button("Merge All Duplicates") {
+                    Button {
                         guard subscriptionManager.isPremium else {
                             showPaywall = true
                             return
                         }
-                            showMergeAllConfirmation = true
+                        showMergeAllConfirmation = true
+                    } label: {
+                        if viewModel.isMerging {
+                            ProgressView()
+                                .tint(Color.pcAccent)
+                        } else {
+                            Text("Merge All Duplicates")
+                        }
                     }
                     .secondaryStyle()
                     .disabled(viewModel.isMerging)
-                    .accessibilityHint("Automatically merge all duplicate contacts")
+                    .accessibilityLabel(viewModel.isMerging ? "Merging contacts, please wait" : "Merge All Duplicates")
+                    .accessibilityHint(viewModel.isMerging ? "" : "Automatically merge all duplicate contacts")
                 }
             }
         }

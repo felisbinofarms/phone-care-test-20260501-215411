@@ -187,4 +187,72 @@ struct StorageAnalyzerTests {
         #expect(result.usedPercentage >= 0)
         #expect(result.usedPercentage < 1)
     }
+
+    // MARK: - analyze() integration (model-level zero-state)
+
+    @Test("StorageAnalysisResult with zero totalBytes reflects zero-state correctly")
+    func zeroTotalBytes_producesZeroState() {
+        let result = StorageAnalysisResult(
+            totalBytes: 0,
+            availableBytes: 0,
+            recoverableBytes: 0,
+            categories: []
+        )
+        #expect(result.totalBytes == 0)
+        #expect(result.usedBytes == 0)
+        #expect(result.usedPercentage == 0.0)
+        #expect(!result.formattedTotal.isEmpty) // ByteCountFormatter still returns a string
+    }
+
+    @Test("Category names in a realistic result are non-empty strings")
+    func categoryNames_nonEmpty() {
+        let categories = [
+            StorageCategoryData(id: "photos",    name: "Photos & Videos",  icon: "photo.fill",           sizeInBytes: 5_000_000_000, color: "pcPrimary"),
+            StorageCategoryData(id: "apps",      name: "Apps",             icon: "square.grid.2x2.fill",  sizeInBytes: 2_000_000_000, color: "pcAccent"),
+            StorageCategoryData(id: "system",    name: "System & Other",   icon: "gearshape.fill",        sizeInBytes: 8_000_000_000, color: "pcTextSecondary"),
+            StorageCategoryData(id: "available", name: "Available",        icon: "checkmark.circle.fill", sizeInBytes: 3_000_000_000, color: "pcMintTint"),
+        ]
+        for category in categories {
+            #expect(!category.name.isEmpty, "Category \(category.id) has empty name")
+        }
+    }
+
+    @Test("Category bytes sum is less than or equal to totalBytes")
+    func categoryBytesSum_lessThanOrEqualToTotalBytes() {
+        let total: Int64 = 64_000_000_000
+        let categories = [
+            StorageCategoryData(id: "photos",    name: "Photos",    icon: "photo.fill",           sizeInBytes: 20_000_000_000, color: "pcPrimary"),
+            StorageCategoryData(id: "apps",      name: "Apps",      icon: "app",                  sizeInBytes: 10_000_000_000, color: "pcAccent"),
+            StorageCategoryData(id: "system",    name: "System",    icon: "gear",                 sizeInBytes: 15_000_000_000, color: "pcTextSecondary"),
+            StorageCategoryData(id: "available", name: "Available", icon: "checkmark.circle.fill", sizeInBytes: 19_000_000_000, color: "pcMintTint"),
+        ]
+        let result = StorageAnalysisResult(totalBytes: total, availableBytes: 19_000_000_000, categories: categories)
+        let categorySum = categories.reduce(Int64(0)) { $0 + $1.sizeInBytes }
+        #expect(categorySum <= result.totalBytes)
+    }
+
+    @Test("analyze() on current device returns totalBytes greater than zero")
+    func analyze_totalBytes_greaterThanZero() async {
+        let analyzer = StorageAnalyzer()
+        let result = await analyzer.analyze()
+        // Real device and simulator both have non-zero disk capacity
+        #expect(result.totalBytes > 0)
+    }
+
+    @Test("analyze() result categories all have non-empty names")
+    func analyze_categoryNames_nonEmpty() async {
+        let analyzer = StorageAnalyzer()
+        let result = await analyzer.analyze()
+        for category in result.categories {
+            #expect(!category.name.isEmpty, "Category \(category.id) has empty name")
+        }
+    }
+
+    @Test("analyze() category bytes sum does not exceed totalBytes")
+    func analyze_categoryBytesSum_doesNotExceedTotal() async {
+        let analyzer = StorageAnalyzer()
+        let result = await analyzer.analyze()
+        let sum = result.categories.reduce(Int64(0)) { $0 + $1.sizeInBytes }
+        #expect(sum <= result.totalBytes, "Category sum \(sum) exceeds totalBytes \(result.totalBytes)")
+    }
 }

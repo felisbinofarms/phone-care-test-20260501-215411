@@ -102,6 +102,9 @@ final class PrivacyAuditor {
     // MARK: - Audit
 
     func performAudit(permissionManager: PermissionManager) async -> PrivacyAuditResult {
+        guard !isAuditing else {
+            return auditResult ?? PrivacyAuditResult(summaries: [], privacyScore: 100)
+        }
         isAuditing = true
         defer { isAuditing = false }
 

@@ -410,18 +410,8 @@ final class ContactAnalyzer {
     // MARK: - Phone Normalization
 
     static func normalizePhoneNumber(_ phone: String) -> String {
-        var digits = phone.filter { $0.isNumber }
-
-        // Remove common country codes for comparison
-        if digits.hasPrefix("1") && digits.count == 11 {
-            digits = String(digits.dropFirst())
-        } else if digits.hasPrefix("44") && digits.count > 10 {
-            digits = String(digits.dropFirst(2))
-        } else if digits.hasPrefix("61") && digits.count > 9 {
-            digits = String(digits.dropFirst(2))
-        }
-
-        return digits
+        let digits = phone.filter { $0.isNumber }
+        return String(digits.suffix(7))
     }
 }
 

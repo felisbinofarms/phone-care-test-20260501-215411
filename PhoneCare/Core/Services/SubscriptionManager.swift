@@ -179,17 +179,31 @@ final class SubscriptionManager {
             }
         }
 
-        #if DEBUG
-        isPremium = foundActive || debugPremiumBypassEnabled
-        #else
-        isPremium = foundActive
-        #endif
-        isInTrial = trialActive
-        isInGracePeriod = gracePeriod
-        currentProductID = activeProductID
-        expirationDate = activeExpiration
+        applyEntitlement(
+            isActive: foundActive,
+            isTrial: trialActive,
+            isGracePeriod: gracePeriod,
+            productID: activeProductID,
+            expiration: activeExpiration
+        )
+    }
 
-        // Cache for instant UI on next launch.
+    private func applyEntitlement(
+        isActive: Bool,
+        isTrial: Bool,
+        isGracePeriod: Bool,
+        productID: String?,
+        expiration: Date?
+    ) {
+        currentProductID = productID
+        expirationDate = expiration
+        isInTrial = isTrial
+        isInGracePeriod = isGracePeriod
+        #if DEBUG
+        isPremium = isActive || debugPremiumBypassEnabled
+        #else
+        isPremium = isActive
+        #endif
         UserDefaults.standard.set(isPremium, forKey: Self.isPremiumKey)
     }
 

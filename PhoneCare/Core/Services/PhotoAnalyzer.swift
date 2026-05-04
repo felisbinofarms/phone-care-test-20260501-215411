@@ -517,21 +517,38 @@ final class PhotoAnalyzer {
             withLocalIdentifiers: [identifier], options: nil
         ).firstObject else { return nil }
 
-        return await withCheckedContinuation { continuation in
-            let options = PHImageRequestOptions()
-            options.deliveryMode = .fastFormat
-            options.isNetworkAccessAllowed = false
-            options.resizeMode = .fast
+        let image: UIImage? = await withThrowingTaskGroup(of: UIImage?.self) { group in
+            group.addTask {
+                await withCheckedContinuation { continuation in
+                    let options = PHImageRequestOptions()
+                    options.deliveryMode = .fastFormat
+                    options.isNetworkAccessAllowed = false
+                    options.resizeMode = .fast
 
-            PHImageManager.default().requestImage(
-                for: asset,
-                targetSize: CGSize(width: 8, height: 8),
-                contentMode: .aspectFill,
-                options: options
-            ) { image, _ in
-                continuation.resume(returning: image.flatMap { Self.averageHash(from: $0) })
+                    PHImageManager.default().requestImage(
+                        for: asset,
+                        targetSize: CGSize(width: 8, height: 8),
+                        contentMode: .aspectFill,
+                        options: options
+                    ) { image, _ in
+                        continuation.resume(returning: image)
+                    }
+                }
             }
+            group.addTask {
+                try await Task.sleep(for: .seconds(5))
+                return nil
+            }
+            do {
+                if let result = try await group.next() {
+                    group.cancelAll()
+                    return result
+                }
+            } catch {}
+            group.cancelAll()
+            return nil
         }
+        return image.flatMap { Self.averageHash(from: $0) }
     }
 
     /// Converts a UIImage to an 8×8 greyscale average hash (64-bit aHash).

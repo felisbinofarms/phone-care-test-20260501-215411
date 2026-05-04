@@ -43,6 +43,7 @@ struct PrivacyView: View {
                     lineWidth: 10,
                     size: 120
                 )
+                .accessibilityLabel("Privacy score: \(viewModel.privacyScore) out of 100")
 
                 Text(viewModel.scoreSummary)
                     .typography(.subheadline, color: .pcTextSecondary)

@@ -77,4 +77,60 @@ struct SubscriptionManagerTests {
         #expect(manager.isInTrial == false)
         #expect(manager.currentProductID == nil)
     }
+
+    // MARK: - isPremium starts false on fresh init
+
+    @Test("isPremium is false on fresh init when no cached premium state exists")
+    func isPremium_freshInit_false() {
+        UserDefaults.standard.removeObject(forKey: "PhoneCare_isPremium")
+        #if DEBUG
+        UserDefaults.standard.removeObject(forKey: "PhoneCare_debugPremiumBypass")
+        #endif
+        let manager = SubscriptionManager()
+        #expect(manager.isPremium == false)
+    }
+
+    // MARK: - Debug premium bypass (DEBUG builds only)
+
+    #if DEBUG
+    @Test("debugPremiumBypassEnabled toggles hasPremiumAccess immediately")
+    func debugPremiumBypass_togglesHasPremiumAccess() {
+        UserDefaults.standard.removeObject(forKey: "PhoneCare_isPremium")
+        UserDefaults.standard.removeObject(forKey: "PhoneCare_debugPremiumBypass")
+        let manager = SubscriptionManager()
+        #expect(manager.hasPremiumAccess == false)
+        manager.debugPremiumBypassEnabled = true
+        #expect(manager.hasPremiumAccess == true)
+        manager.debugPremiumBypassEnabled = false
+        #expect(manager.hasPremiumAccess == false)
+    }
+
+    @Test("debugPremiumBypassEnabled persists to UserDefaults")
+    func debugPremiumBypass_persistsToUserDefaults() {
+        UserDefaults.standard.removeObject(forKey: "PhoneCare_debugPremiumBypass")
+        let manager = SubscriptionManager()
+        manager.debugPremiumBypassEnabled = true
+        #expect(UserDefaults.standard.bool(forKey: "PhoneCare_debugPremiumBypass") == true)
+        manager.debugPremiumBypassEnabled = false
+    }
+    #endif
+
+    // MARK: - loadProducts in test environment
+
+    @Test("loadProducts in test environment does not crash")
+    func loadProducts_testEnvironment_doesNotCrash() async {
+        let manager = SubscriptionManager()
+        await manager.loadProducts()
+        // StoreKit is unavailable in unit test environment; products may be empty.
+        // The key invariant: isLoading must be false after the call completes.
+        #expect(manager.isLoading == false)
+    }
+
+    @Test("loadProducts leaves isLoading false after completion")
+    func loadProducts_isLoading_falseAfterCompletion() async {
+        let manager = SubscriptionManager()
+        #expect(manager.isLoading == false)
+        await manager.loadProducts()
+        #expect(manager.isLoading == false)
+    }
 }

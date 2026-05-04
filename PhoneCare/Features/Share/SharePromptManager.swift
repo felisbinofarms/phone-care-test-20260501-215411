@@ -32,30 +32,14 @@ final class SharePromptManager {
     }
 
     func shouldShowPrompt(dataManager: DataManager) -> Bool {
-        guard let prefs = try? dataManager.fetch(
-            UserPreferences.self,
-            fetchLimit: 1
-        ).first else {
-            return true
-        }
-        guard let lastShown = prefs.sharePromptLastShownAt else {
+        guard let lastShown = UserDefaults.standard.object(forKey: "sharePromptLastShownAt") as? Date else {
             return true
         }
         return Date().timeIntervalSince(lastShown) >= Self.cooldownInterval
     }
 
     func recordPromptShown(dataManager: DataManager) {
-        do {
-            if let prefs = try dataManager.fetch(UserPreferences.self, fetchLimit: 1).first {
-                prefs.sharePromptLastShownAt = Date()
-                try dataManager.saveContext()
-            } else {
-                let newPrefs = UserPreferences(sharePromptLastShownAt: Date())
-                try dataManager.save(newPrefs)
-            }
-        } catch {
-            // Non-critical — prompt may show again sooner
-        }
+        UserDefaults.standard.set(Date(), forKey: "sharePromptLastShownAt")
     }
 
     static func shareMessage(for type: SharePromptType) -> String {

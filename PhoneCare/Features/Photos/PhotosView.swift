@@ -74,8 +74,11 @@ struct PhotosView: View {
                     onDismiss: {
                         viewModel.dismissDeletedToast()
                         if sharePromptManager.shouldShowPrompt(dataManager: dataManager) {
-                            withAnimation { showSharePrompt = true }
                             sharePromptManager.recordPromptShown(dataManager: dataManager)
+                            Task {
+                                try? await Task.sleep(for: .seconds(3))
+                                withAnimation { showSharePrompt = true }
+                            }
                         }
                     }
                 )

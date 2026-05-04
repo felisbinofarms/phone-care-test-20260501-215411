@@ -40,10 +40,15 @@ struct DashboardView: View {
         .accessibilityIdentifier("screen.dashboard")
         .navigationTitle("Phone Health")
         .refreshable {
-            viewModel.load(dataManager: dataManager, permissionManager: permissionManager)
+            viewModel.refresh(dataManager: dataManager, permissionManager: permissionManager)
         }
         .onAppear {
-            viewModel.load(dataManager: dataManager, permissionManager: permissionManager)
+            viewModel.refresh(dataManager: dataManager, permissionManager: permissionManager)
+        }
+        .onChange(of: appState.selectedTab) { _, newTab in
+            if newTab == .home {
+                viewModel.refresh(dataManager: dataManager, permissionManager: permissionManager)
+            }
         }
         .sheet(isPresented: $showPaywall) {
             PaywallBottomSheet()

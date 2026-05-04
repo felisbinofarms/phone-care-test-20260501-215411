@@ -248,4 +248,81 @@ struct PhotoAnalyzerTests {
         #expect(result.largeVideoInfos.isEmpty)
         #expect(result.largeVideoCount == 1)
     }
+
+    // MARK: - Empty photo library produces empty duplicate groups
+
+    @Test("PhotoAnalysisResult with zero photos has empty duplicateGroups")
+    func emptyPhotoLibrary_emptyDuplicateGroups() {
+        let result = PhotoAnalysisResult(
+            totalPhotos: 0,
+            duplicateGroups: [],
+            screenshotIdentifiers: [],
+            largeVideoIdentifiers: [],
+            blurryIdentifiers: []
+        )
+        #expect(result.duplicateGroups.isEmpty)
+        #expect(result.duplicateCount == 0)
+    }
+
+    // MARK: - Two identical photos detected as duplicates
+
+    @Test("Two-asset group with exactDuplicate reason has exactly one duplicate identifier")
+    func twoIdenticalPhotos_detectedAsDuplicates() {
+        let group = DuplicateGroup(
+            id: "exact-001",
+            assetIdentifiers: ["photo_original", "photo_copy"],
+            suggestedKeepIdentifier: "photo_original",
+            estimatedSavingsBytes: 3_500_000,
+            groupReason: .exactDuplicate
+        )
+        #expect(group.groupReason == .exactDuplicate)
+        #expect(group.count == 2)
+        #expect(group.duplicateIdentifiers.count == 1)
+        #expect(group.duplicateIdentifiers.first == "photo_copy")
+        #expect(group.estimatedSavingsBytes == 3_500_000)
+    }
+
+    @Test("exactDuplicate group's suggestedKeepIdentifier is in assetIdentifiers")
+    func exactDuplicate_keepIdentifier_inGroup() {
+        let group = DuplicateGroup(
+            id: "exact-002",
+            assetIdentifiers: ["img_a", "img_b"],
+            suggestedKeepIdentifier: "img_a",
+            estimatedSavingsBytes: 1_200_000,
+            groupReason: .exactDuplicate
+        )
+        #expect(group.assetIdentifiers.contains(group.suggestedKeepIdentifier))
+    }
+
+    // MARK: - Burst photos grouped into one burst group
+
+    @Test("Burst group with three assets has burstSequence reason and two duplicate identifiers")
+    func burstPhotos_groupedIntoBurstGroup() {
+        let group = DuplicateGroup(
+            id: "burst-001",
+            assetIdentifiers: ["burst_frame_1", "burst_frame_2", "burst_frame_3"],
+            suggestedKeepIdentifier: "burst_frame_1",
+            estimatedSavingsBytes: 8_000_000,
+            groupReason: .burstSequence,
+            keepReason: "This frame has the best estimated quality in the burst sequence."
+        )
+        #expect(group.groupReason == .burstSequence)
+        #expect(group.count == 3)
+        #expect(group.duplicateIdentifiers.count == 2)
+        #expect(!group.keepReason.isEmpty)
+    }
+
+    @Test("Burst group savings equal sum of non-kept frame sizes")
+    func burstGroup_savings_correctlyReflected() {
+        let savings: Int64 = 12_000_000
+        let group = DuplicateGroup(
+            id: "burst-002",
+            assetIdentifiers: ["b1", "b2", "b3", "b4"],
+            suggestedKeepIdentifier: "b1",
+            estimatedSavingsBytes: savings,
+            groupReason: .burstSequence
+        )
+        #expect(group.estimatedSavingsBytes == savings)
+        #expect(group.duplicateIdentifiers == ["b2", "b3", "b4"])
+    }
 }

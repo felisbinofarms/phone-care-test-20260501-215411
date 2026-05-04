@@ -52,6 +52,10 @@ struct HealthScoreInput: Sendable {
 
 final class HealthScoreCalculator {
 
+    // MARK: - Thresholds
+
+    static let goodThreshold: Int = 51
+
     // MARK: - Weights
 
     private static let storageWeight:  Double = 0.40

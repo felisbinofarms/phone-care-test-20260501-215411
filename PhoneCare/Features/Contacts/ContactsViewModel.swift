@@ -40,6 +40,7 @@ final class ContactsViewModel {
     private(set) var lastMergedCount: Int = 0
     private(set) var isMerging: Bool = false
     var alertInfo: ContactsAlertInfo?
+    var mergeError: String?
 
     private let analyzer = ContactAnalyzer()
     private let undoManager = CleanupUndoManager()
@@ -97,6 +98,7 @@ final class ContactsViewModel {
         guard !isMerging else { return }
 
         Task { @MainActor in
+            mergeError = nil
             do {
                 isMerging = true
                 let token = try await performMerge(group, dataManager: dataManager)
@@ -107,6 +109,7 @@ final class ContactsViewModel {
                 lastMergedCount = token.mergedCount
                 showUndoToast = true
             } catch {
+                mergeError = error.localizedDescription
                 alertInfo = ContactsAlertInfo(
                     title: "Merge Could Not Finish",
                     message: "We could not merge those contacts right now. Please try again."
@@ -122,6 +125,7 @@ final class ContactsViewModel {
         guard !groups.isEmpty else { return }
 
         Task { @MainActor in
+            mergeError = nil
             isMerging = true
             var mergedTokens: [MergeUndoToken] = []
             var totalMerged = 0
@@ -139,6 +143,7 @@ final class ContactsViewModel {
                 registerUndo(for: mergedTokens, dataManager: dataManager)
                 showUndoToast = totalMerged > 0
             } catch {
+                mergeError = error.localizedDescription
                 alertInfo = ContactsAlertInfo(
                     title: "Merge Could Not Finish",
                     message: "Some contacts could not be merged. Nothing else was changed after the error."
@@ -224,6 +229,9 @@ final class ContactsViewModel {
 
     private func performMerge(_ group: DuplicateContactGroup, dataManager: DataManager) async throws -> MergeUndoToken {
         let removeIDs = group.contactIDs.filter { $0 != group.suggestedPrimaryID }
+        guard !removeIDs.isEmpty else {
+            throw ContactMergeError.mergeFailed("No duplicate contacts to remove from this group.")
+        }
         let mergeDate = Date()
 
         try await analyzer.mergeContacts(

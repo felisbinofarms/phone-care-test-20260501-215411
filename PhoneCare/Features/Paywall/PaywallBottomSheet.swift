@@ -139,6 +139,7 @@ struct PaywallBottomSheet: View {
                 }
                 .textLinkStyle()
                 .accessibleTapTarget()
+                .accessibilityLabel("Try again")
             }
             .padding(.vertical, PCTheme.Spacing.lg)
         } else {
@@ -270,6 +271,7 @@ struct PaywallBottomSheet: View {
             }
             .textLinkStyle()
             .accessibleTapTarget()
+            .accessibilityLabel("Restore Purchases")
 
             Text("Payment will be charged to your Apple ID. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.")
                 .typography(.caption, color: .pcTextSecondary)
@@ -283,6 +285,7 @@ struct PaywallBottomSheet: View {
                 }
                 .textLinkStyle()
                 .font(.caption)
+                .accessibilityLabel("Terms of Service")
 
                 Button("Privacy Policy") {
                         if let url = PrivacyManifesto.privacyPolicyURL {
@@ -291,6 +294,7 @@ struct PaywallBottomSheet: View {
                 }
                 .textLinkStyle()
                 .font(.caption)
+                .accessibilityLabel("Privacy Policy")
             }
 
             // Dismiss
