@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(SubscriptionManager.self) private var subscriptionManager
     @Environment(AppState.self) private var appState
     @State private var viewModel = SettingsViewModel()
+    @State private var showNotificationSaved = false
+    @State private var notificationSaveFeedbackID = 0
 
     var body: some View {
         ScrollView {
@@ -39,6 +41,15 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .onAppear {
             viewModel.load(dataManager: dataManager, appState: appState)
+        }
+        .task(id: notificationSaveFeedbackID) {
+            guard notificationSaveFeedbackID > 0 else { return }
+            let currentFeedbackID = notificationSaveFeedbackID
+            try? await Task.sleep(for: .seconds(1.5))
+            guard currentFeedbackID == notificationSaveFeedbackID else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                showNotificationSaved = false
+            }
         }
     }
 
@@ -81,7 +92,7 @@ struct SettingsView: View {
                     .tint(Color.pcAccent)
                     .accessibilityIdentifier("settings.notification.weekly")
                     .onChange(of: viewModel.weeklyNotification) { _, _ in
-                        viewModel.saveNotifications(dataManager: dataManager)
+                        saveNotificationSettings()
                     }
 
                 Divider().foregroundStyle(Color.pcBorder)
@@ -91,7 +102,7 @@ struct SettingsView: View {
                     .tint(Color.pcAccent)
                     .accessibilityIdentifier("settings.notification.duplicates")
                     .onChange(of: viewModel.duplicateAlerts) { _, _ in
-                        viewModel.saveNotifications(dataManager: dataManager)
+                        saveNotificationSettings()
                     }
 
                 Divider().foregroundStyle(Color.pcBorder)
@@ -101,9 +112,23 @@ struct SettingsView: View {
                     .tint(Color.pcAccent)
                     .accessibilityIdentifier("settings.notification.battery")
                     .onChange(of: viewModel.batteryAlerts) { _, _ in
-                        viewModel.saveNotifications(dataManager: dataManager)
+                        saveNotificationSettings()
                     }
+
+                if showNotificationSaved {
+                    Text("Changes saved")
+                        .typography(.caption, color: .pcAccent)
+                        .transition(.opacity)
+                }
             }
+        }
+    }
+
+    private func saveNotificationSettings() {
+        viewModel.saveNotifications(dataManager: dataManager)
+        notificationSaveFeedbackID += 1
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showNotificationSaved = true
         }
     }
 

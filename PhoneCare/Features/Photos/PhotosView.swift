@@ -64,9 +64,8 @@ struct PhotosView: View {
                 UndoToastView(
                     itemCount: viewModel.lastDeletedCount,
                     title: "\(viewModel.lastDeletedCount) photo\(viewModel.lastDeletedCount == 1 ? "" : "s") moved to Recently Deleted",
-                    buttonLabel: "Open Photos",
+                    buttonLabel: "View in Photos",
                     onAction: {
-                        // photos:// is the correct scheme to open the Photos app
                         if let url = URL(string: "photos://"), UIApplication.shared.canOpenURL(url) {
                             UIApplication.shared.open(url)
                         }

@@ -96,6 +96,35 @@ struct PermissionManagerTests {
         #expect(manager.deniedCount == 0)
     }
 
+    @Test("checkAllStatuses completes without throwing")
+    @MainActor
+    func permissionManager_checkAllStatusesCompletes() async {
+        let manager = PermissionManager()
+        await manager.checkAllStatuses()
+        #expect(true)
+    }
+
+    @Test("checkAllStatuses returns at least one status entry")
+    @MainActor
+    func permissionManager_checkAllStatusesPopulatesStatuses() async {
+        let manager = PermissionManager()
+        await manager.checkAllStatuses()
+        #expect(!manager.statuses.isEmpty)
+    }
+
+    @Test("checkAllStatuses only returns expected permission status cases")
+    @MainActor
+    func permissionManager_checkAllStatusesReturnsExpectedStatuses() async {
+        let manager = PermissionManager()
+        let expectedStatuses: Set<PermissionStatus> = [.authorized, .denied, .notDetermined, .restricted, .limited]
+
+        await manager.checkAllStatuses()
+
+        for status in manager.statuses.values {
+            #expect(expectedStatuses.contains(status), "Unexpected permission status: \(status.rawValue)")
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeSummary(status: PermissionStatus) -> PermissionSummary {

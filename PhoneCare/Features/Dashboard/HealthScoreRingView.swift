@@ -51,6 +51,7 @@ struct HealthScoreRingView: View {
             }
         }
         .frame(width: size, height: size)
+        .animation(reduceMotion ? .none : .easeOut(duration: 0.6), value: score)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Health score: \(score) out of 100")
         .accessibilityValue(scoreAccessibilityDescription)

@@ -4,6 +4,7 @@ import StoreKit
 struct PaywallOnboardingView: View {
     let subscriptionManager: SubscriptionManager
     let onContinue: () -> Void
+    let onBack: () -> Void
     let onSkip: () -> Void
 
     @Environment(\.openURL) private var openURL
@@ -17,6 +18,26 @@ struct PaywallOnboardingView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: PCTheme.Spacing.lg) {
+                    HStack {
+                        Button {
+                            onBack()
+                        } label: {
+                            HStack(spacing: PCTheme.Spacing.xs) {
+                                Image(systemName: "chevron.left")
+                                    .font(.body.weight(.medium))
+                                Text("Back")
+                                    .font(.body)
+                            }
+                            .foregroundStyle(Color.pcPrimary)
+                        }
+                        .accessibleTapTarget()
+                        .accessibilityLabel("Go back")
+
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, PCTheme.Spacing.md)
+
                     // Header
                     VStack(spacing: PCTheme.Spacing.sm) {
                         Image(systemName: "sparkles")

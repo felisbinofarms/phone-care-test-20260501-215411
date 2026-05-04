@@ -7,6 +7,11 @@ struct PrivacyView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: PCTheme.Spacing.lg) {
+                if viewModel.isLoading && !viewModel.permissions.isEmpty {
+                    ProgressView("Checking permissions...")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 // Privacy score
                 scoreSection
 
@@ -24,10 +29,10 @@ struct PrivacyView: View {
         .accessibilityIdentifier("screen.privacy")
         .navigationTitle("Privacy")
         .refreshable {
-            viewModel.load(permissionManager: permissionManager)
+            await viewModel.load(permissionManager: permissionManager)
         }
-        .onAppear {
-            viewModel.load(permissionManager: permissionManager)
+        .task {
+            await viewModel.load(permissionManager: permissionManager)
         }
         // Privacy share prompt removed — no user-initiated "cleanup win" moment here.
         // Privacy sharing is handled via CompletionCelebrationView in the Review Privacy guided flow.
@@ -90,11 +95,11 @@ struct PrivacyView: View {
                 .typography(.headline)
                 .voiceOverHeading()
 
-            if viewModel.isLoading {
+            if viewModel.isLoading && viewModel.permissions.isEmpty {
                 CardView {
                     HStack {
                         Spacer()
-                        ProgressView()
+                        ProgressView("Checking permissions...")
                             .padding(.vertical, PCTheme.Spacing.lg)
                         Spacer()
                     }

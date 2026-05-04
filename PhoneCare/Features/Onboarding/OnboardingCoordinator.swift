@@ -192,6 +192,7 @@ struct OnboardingCoordinator: View {
             PaywallOnboardingView(
                 subscriptionManager: subscriptionManager,
                 onContinue: goForward,
+                onBack: goBack,
                 onSkip: goForward
             )
 

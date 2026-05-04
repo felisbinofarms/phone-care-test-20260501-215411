@@ -22,29 +22,27 @@ final class PrivacyViewModel {
 
     // MARK: - Load
 
-    func load(permissionManager: PermissionManager) {
+    func load(permissionManager: PermissionManager) async {
         isLoading = true
+        defer { isLoading = false }
 
-        Task {
-            await permissionManager.checkAllStatuses()
+        await permissionManager.checkAllStatuses()
 
-            var infos: [PrivacyPermissionInfo] = []
-            for type in PermissionType.allCases {
-                let status = permissionManager.status(for: type)
-                infos.append(PrivacyPermissionInfo(
-                    id: type.rawValue,
-                    type: type,
-                    status: status,
-                    statusColor: colorForStatus(status),
-                    statusText: textForStatus(status, type: type),
-                    icon: iconForPermission(type)
-                ))
-            }
-
-            permissions = infos
-            privacyScore = computeScore(permissions: infos)
-            isLoading = false
+        var infos: [PrivacyPermissionInfo] = []
+        for type in PermissionType.allCases {
+            let status = permissionManager.status(for: type)
+            infos.append(PrivacyPermissionInfo(
+                id: type.rawValue,
+                type: type,
+                status: status,
+                statusColor: colorForStatus(status),
+                statusText: textForStatus(status, type: type),
+                icon: iconForPermission(type)
+            ))
         }
+
+        permissions = infos
+        privacyScore = computeScore(permissions: infos)
     }
 
     // MARK: - Score
