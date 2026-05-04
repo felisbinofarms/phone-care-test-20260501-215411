@@ -348,10 +348,11 @@ final class PhotoAnalyzer {
         }
         for (_, members) in burstBuckets where members.count >= 2 {
             // Prefer user-picked best shot; fall back to auto-pick, then highest res
-            let best = members.first(where: { $0.burstSelectionTypes.contains(.userPick) })
+            guard let best = members.first(where: { $0.burstSelectionTypes.contains(.userPick) })
                 ?? members.first(where: { $0.burstSelectionTypes.contains(.autoPick) })
                 ?? members.max(by: { ($0.pixelWidth * $0.pixelHeight) < ($1.pixelWidth * $1.pixelHeight) })
                 ?? members.first
+            else { continue }
 
             let savings = members
                 .filter { $0.identifier != best.identifier }
