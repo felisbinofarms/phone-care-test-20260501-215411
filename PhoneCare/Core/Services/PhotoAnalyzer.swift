@@ -351,7 +351,7 @@ final class PhotoAnalyzer {
             let best = members.first(where: { $0.burstSelectionTypes.contains(.userPick) })
                 ?? members.first(where: { $0.burstSelectionTypes.contains(.autoPick) })
                 ?? members.max(by: { ($0.pixelWidth * $0.pixelHeight) < ($1.pixelWidth * $1.pixelHeight) })
-                ?? members[0]
+                ?? members.first
 
             let savings = members
                 .filter { $0.identifier != best.identifier }
@@ -404,7 +404,7 @@ final class PhotoAnalyzer {
             }
 
             if group.count >= 2 {
-                let best = group.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? group[0]
+                guard let best = group.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? group.first else { continue }
                 let savings = group
                     .filter { $0.identifier != best.identifier }
                     .reduce(Int64(0)) { $0 + $1.estimatedFileSize }
@@ -480,7 +480,7 @@ final class PhotoAnalyzer {
 
             for (_, members) in components where members.count >= 2 {
                 guard members.allSatisfy({ !processedIdentifiers.contains($0.identifier) }) else { continue }
-                let best = members.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? members[0]
+                guard let best = members.max(by: { $0.estimatedFileSize < $1.estimatedFileSize }) ?? members.first else { continue }
                 let savings = members
                     .filter { $0.identifier != best.identifier }
                     .reduce(Int64(0)) { $0 + $1.estimatedFileSize }

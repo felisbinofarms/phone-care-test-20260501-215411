@@ -66,7 +66,8 @@ struct PhotosView: View {
                     title: "\(viewModel.lastDeletedCount) photo\(viewModel.lastDeletedCount == 1 ? "" : "s") moved to Recently Deleted",
                     buttonLabel: "Open Photos",
                     onAction: {
-                        if let url = URL(string: "photos-redirect://") {
+                        // photos:// is the correct scheme to open the Photos app
+                        if let url = URL(string: "photos://"), UIApplication.shared.canOpenURL(url) {
                             UIApplication.shared.open(url)
                         }
                     },

@@ -34,7 +34,14 @@ final class DataManager {
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            fatalError("Failed to create ModelContainer: \(error.localizedDescription)")
+            // On-disk store failed (e.g., schema migration conflict, disk full).
+            // Fall back to an in-memory container so the app can still launch.
+            let fallbackConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            do {
+                modelContainer = try ModelContainer(for: schema, configurations: [fallbackConfig])
+            } catch {
+                fatalError("Failed to create even an in-memory ModelContainer: \(error.localizedDescription)")
+            }
         }
     }
 

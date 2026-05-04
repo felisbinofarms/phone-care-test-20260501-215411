@@ -114,7 +114,9 @@ final class ContactAnalyzer {
             throw ContactMergeError.contactNotFound
         }
 
-        let mutablePrimary = primaryContact.mutableCopy() as! CNMutableContact
+        guard let mutablePrimary = primaryContact.mutableCopy() as? CNMutableContact else {
+            throw ContactMergeError.mergeFailed("Could not create mutable copy of primary contact")
+        }
         let saveRequest = CNSaveRequest()
 
         for removeID in removeIdentifiers {
@@ -174,7 +176,7 @@ final class ContactAnalyzer {
             }
 
             // Delete the duplicate
-            let mutableDelete = contact.mutableCopy() as! CNMutableContact
+            guard let mutableDelete = contact.mutableCopy() as? CNMutableContact else { continue }
             saveRequest.delete(mutableDelete)
         }
 
@@ -362,7 +364,7 @@ final class ContactAnalyzer {
 
             if group.count >= 2 {
                 // Suggest the contact with the most filled fields as primary
-                let best = group.max(by: { $0.fieldCount < $1.fieldCount }) ?? group[0]
+                guard let best = group.max(by: { $0.fieldCount < $1.fieldCount }) ?? group.first else { continue }
 
                 let names = group.map { info in
                     let name = [info.givenName, info.familyName]
