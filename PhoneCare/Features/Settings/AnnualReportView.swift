@@ -87,6 +87,7 @@ struct AnnualReportView: View {
         }
         .navigationTitle("Annual Report")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.annualReport")
     }
 
     // MARK: - Stat Card

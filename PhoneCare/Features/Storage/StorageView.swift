@@ -34,6 +34,9 @@ struct StorageView: View {
                 if !viewModel.recommendations.isEmpty {
                     recommendationsSection
                 }
+
+                // Storage Tools
+                storageToolsSection
             }
             .padding(.horizontal, PCTheme.Spacing.md)
             .padding(.top, PCTheme.Spacing.md)
@@ -180,34 +183,128 @@ struct StorageView: View {
                 .voiceOverHeading()
 
             ForEach(viewModel.recommendations) { rec in
-                CardView {
-                    HStack(spacing: PCTheme.Spacing.md) {
-                        Image(systemName: rec.icon)
-                            .font(.title3)
-                            .foregroundStyle(Color.pcAccent)
-                            .frame(width: 36, height: 36)
-                            .voiceOverHidden()
-
-                        VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
-                            Text(rec.title)
-                                .typography(.subheadline)
-
-                            Text(rec.description)
-                                .typography(.footnote, color: .pcTextSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            if rec.potentialSavings > 0 {
-                                Text("Could save \(viewModel.formatBytes(rec.potentialSavings))")
-                                    .typography(.footnote, color: .pcAccent)
-                            }
-                        }
-
-                        Spacer()
-                    }
-                }
-                .accessibilityElement(children: .combine)
+                recommendationRow(rec)
             }
         }
+    }
+
+    @ViewBuilder
+    private func recommendationRow(_ rec: StorageRecommendation) -> some View {
+        let content = CardView {
+            HStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: rec.icon)
+                    .font(.title3)
+                    .foregroundStyle(Color.pcAccent)
+                    .frame(width: 36, height: 36)
+                    .voiceOverHidden()
+
+                VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                    Text(rec.title)
+                        .typography(.subheadline)
+
+                    Text(rec.description)
+                        .typography(.footnote, color: .pcTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if rec.potentialSavings > 0 {
+                        Text("Could save \(viewModel.formatBytes(rec.potentialSavings))")
+                            .typography(.footnote, color: .pcAccent)
+                    }
+                }
+
+                Spacer()
+
+                if rec.destination != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+
+        if let dest = rec.destination {
+            switch dest {
+            case .photos:
+                NavigationLink { PhotosView() } label: { content }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Go to Photos tab")
+            case .contacts:
+                NavigationLink { ContactsView() } label: { content }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Go to Contacts")
+            case .settings:
+                NavigationLink { SettingsView() } label: { content }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Go to Settings")
+            }
+        } else {
+            content
+        }
+    }
+
+
+    // MARK: - Storage Tools
+
+    private var storageToolsSection: some View {
+        VStack(alignment: .leading, spacing: PCTheme.Spacing.sm) {
+            Text("Storage Tools")
+                .typography(.headline)
+                .voiceOverHeading()
+
+            NavigationLink {
+                LargeFileFinderView(largeVideoIDs: [])
+            } label: {
+                toolRow(
+                    icon: "video.fill",
+                    title: "Find Large Videos",
+                    subtitle: "See which videos are using the most space"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("storage.tool.largeFiles")
+
+            NavigationLink {
+                MessageAttachmentGuideView()
+            } label: {
+                toolRow(
+                    icon: "message.fill",
+                    title: "iMessage Attachments",
+                    subtitle: "Guide to freeing up space from message attachments"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("storage.tool.messageGuide")
+        }
+    }
+
+    private func toolRow(icon: String, title: String, subtitle: String) -> some View {
+        CardView {
+            HStack(spacing: PCTheme.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(Color.pcAccent)
+                    .frame(width: 36, height: 36)
+                    .background(Color.pcAccent.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: PCTheme.Radius.sm))
+                    .voiceOverHidden()
+
+                VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                    Text(title)
+                        .typography(.subheadline)
+                    Text(subtitle)
+                        .typography(.footnote, color: .pcTextSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundStyle(Color.pcTextSecondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Tap to open")
     }
 }
 

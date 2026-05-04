@@ -18,8 +18,14 @@ struct SettingsView: View {
                 // Notifications
                 notificationsSection
 
+                // Share with a friend
+                giftAFriendSection
+
                 // About
                 aboutSection
+
+                // Annual Report
+                annualReportSection
 
                 // Data & Privacy
                 dataPrivacySection
@@ -167,5 +173,72 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("settings.dataPrivacy")
         .accessibilityHint("Tap to read your privacy details and manage your app data")
+    }
+
+    // MARK: - Gift a Friend
+
+    private var giftAFriendSection: some View {
+        NavigationLink {
+            GiftAFriendView()
+        } label: {
+            CardView {
+                HStack(spacing: PCTheme.Spacing.md) {
+                    Image(systemName: "gift.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.pcAccent)
+                        .voiceOverHidden()
+
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                        Text("Share with a Friend")
+                            .typography(.subheadline)
+                        Text("Know someone who could use honest phone care?")
+                            .typography(.footnote, color: .pcTextSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.giftAFriend")
+        .accessibilityHint("Tap to share PhoneCare with a friend")
+    }
+
+    // MARK: - Annual Report
+
+    private var annualReportSection: some View {
+        let stats = (try? dataManager.fetch(CleanupStats.self))?.first ?? CleanupStats()
+        return NavigationLink {
+            AnnualReportView(stats: stats)
+        } label: {
+            CardView {
+                HStack(spacing: PCTheme.Spacing.md) {
+                    Image(systemName: "star.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.pcAccent)
+                        .voiceOverHidden()
+
+                    VStack(alignment: .leading, spacing: PCTheme.Spacing.xs) {
+                        Text("Your Year with PhoneCare")
+                            .typography(.subheadline)
+                        Text("See everything you've accomplished")
+                            .typography(.footnote, color: .pcTextSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.footnote)
+                        .foregroundStyle(Color.pcTextSecondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.annualReport")
+        .accessibilityHint("Tap to view your annual health report")
     }
 }

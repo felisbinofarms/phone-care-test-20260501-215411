@@ -63,6 +63,7 @@ struct GiftAFriendView: View {
         }
         .navigationTitle("Share with a Friend")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.giftAFriend")
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [shareMessage])
         }

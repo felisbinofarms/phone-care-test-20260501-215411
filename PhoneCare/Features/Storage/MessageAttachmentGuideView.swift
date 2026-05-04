@@ -97,6 +97,7 @@ struct MessageAttachmentGuideView: View {
         }
         .navigationTitle("Message Attachments")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.messageAttachmentGuide")
     }
 
     // MARK: - Step Row

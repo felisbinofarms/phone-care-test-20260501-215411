@@ -30,6 +30,10 @@ struct LargeFileFinderView: View {
         .task {
             await loadFiles()
         }
+        .background(Color.pcBackground)
+        .navigationTitle("Large Files")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.largeFileFinder")
     }
 
     // MARK: - Header
@@ -132,12 +136,23 @@ struct LargeFileFinderView: View {
     // MARK: - Data Loading
 
     private func loadFiles() async {
-        guard !largeVideoIDs.isEmpty else {
+        let idsFetched: PHFetchResult<PHAsset>
+        if largeVideoIDs.isEmpty {
+            // Scan all videos from library when no pre-computed IDs are supplied
+            let options = PHFetchOptions()
+            options.sortDescriptors = [NSSortDescriptor(key: "duration", ascending: false)]
+            options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.video.rawValue)
+            idsFetched = PHAsset.fetchAssets(with: options)
+        } else {
+            idsFetched = PHAsset.fetchAssets(withLocalIdentifiers: largeVideoIDs, options: nil)
+        }
+
+        guard idsFetched.count > 0 else {
             isLoading = false
             return
         }
 
-        let fetchResult = PHAsset.fetchAssets(withLocalIdentifiers: largeVideoIDs, options: nil)
+        let fetchResult = idsFetched
         var loaded: [LargeFileInfo] = []
 
         let imageManager = PHCachingImageManager()

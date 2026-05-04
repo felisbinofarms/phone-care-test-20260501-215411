@@ -214,4 +214,17 @@ final class BatteryViewModel {
 
         return result
     }
+
+    // MARK: - Testing Support
+
+    #if DEBUG
+    func injectForTesting(level: Double, isCharging: Bool, thermalState: Int) {
+        currentLevel = level
+        self.isCharging = isCharging
+        self.thermalState = thermalState
+    }
+    func injectSnapshots(_ shots: [BatterySnapshot]) {
+        snapshots = shots
+    }
+    #endif
 }
